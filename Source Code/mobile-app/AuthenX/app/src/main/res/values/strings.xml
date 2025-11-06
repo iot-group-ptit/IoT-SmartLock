@@ -2,4 +2,13 @@
     <string name="app_name">AuthenX</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="instruction_camera">Place the face in the frame. Click capture button to authenticate.</string>
+    <string name="authenx">AuthenX</string>
+    <string name="scan_face">Scan face</string>
+    <string name="register_face">Register face</string>
+    <string name="scan_fingerprint">Scan fingerprint</string>
+    <string name="register_fingerprint">Register fingerprint</string>
+    <string name="fingerprint_authentication">Fingerprint authentication</string>
+    <string name="fingerprint_consstruction">Place your finger on the fingerprint sensor to authenticate</string>
+    <string name="cancel">Cancel</string>
 </resources>

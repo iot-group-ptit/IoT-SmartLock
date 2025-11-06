@@ -1,24 +1,24 @@
 package com.example.authenx.presentation.ui
 
 import android.os.Bundle
+import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.authenx.R
-import com.example.authenx.databinding.FragmentFaceAuthenBinding
+import com.example.authenx.databinding.FragmentScanFingerprintBinding
 
-class FaceAuthenFragment : Fragment() {
+class ScanFingerprintFragment : Fragment() {
 
-    private var _binding: FragmentFaceAuthenBinding? = null
+    private var _binding: FragmentScanFingerprintBinding? = null
     private val binding get() = _binding!!
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        _binding = FragmentFaceAuthenBinding.inflate(inflater, container, false)
+        _binding = FragmentScanFingerprintBinding.inflate(inflater, container, false)
         val view = binding.root
         return view
     }
@@ -35,7 +35,6 @@ class FaceAuthenFragment : Fragment() {
             }
         }
     }
-
 
     override fun onDestroyView() {
         super.onDestroyView()
