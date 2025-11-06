@@ -16,6 +16,9 @@
         <action
             android:id="@+id/action_homeFragment_to_scanFingerprintFragment"
             app:destination="@id/scanFingerprintFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_statisticFragment"
+            app:destination="@id/statisticFragment" />
     </fragment>
     <fragment
         android:id="@+id/faceAuthenFragment"
@@ -27,4 +30,8 @@
         android:name="com.example.authenx.presentation.ui.ScanFingerprintFragment"
         android:label="fragment_scan_fingerprint"
         tools:layout="@layout/fragment_scan_fingerprint" />
+    <fragment
+        android:id="@+id/statisticFragment"
+        android:name="com.example.authenx.presentation.ui.StatisticFragment"
+        android:label="StatisticFragment" />
 </navigation>

@@ -42,6 +42,9 @@ class HomeFragment : Fragment() {
             btnRegisterFingerPrint.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_scanFingerprintFragment)
             }
+            btnStatistic.setOnClickListener {
+                findNavController().navigate(R.id.action_homeFragment_to_statisticFragment)
+            }
         }
     }
 

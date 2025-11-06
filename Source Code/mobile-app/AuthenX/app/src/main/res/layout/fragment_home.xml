@@ -15,7 +15,7 @@
         android:textSize="48sp"
         android:textColor="@color/primary_color"
         android:fontFamily="@font/montserrat_semibold"
-        app:layout_constraintVertical_bias="0.2"
+        app:layout_constraintVertical_bias="0.15"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -72,4 +72,18 @@
         android:backgroundTint="@color/secondary_color"
         app:layout_constraintStart_toStartOf="@id/btnScanFingerprint"
         app:layout_constraintEnd_toEndOf="@id/btnScanFingerprint"/>
+
+    <Button
+        android:id="@+id/btnStatistic"
+        android:layout_width="196dp"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@id/btnRegisterFingerPrint"
+        android:text="@string/go_to_statistics"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@color/secondary_color"
+        app:layout_constraintStart_toStartOf="@id/btnScanFingerprint"
+        app:layout_constraintEnd_toEndOf="@id/btnScanFingerprint"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

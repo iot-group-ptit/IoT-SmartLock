@@ -11,4 +11,17 @@
     <string name="fingerprint_authentication">Fingerprint authentication</string>
     <string name="fingerprint_consstruction">Place your finger on the fingerprint sensor to authenticate</string>
     <string name="cancel">Cancel</string>
+    <string name="access_statistic">Access statistic</string>
+    <string name="overall">Overall</string>
+    <string name="today">Today</string>
+    <string name="times">times</string>
+    <string name="_7_days">7 days</string>
+    <string name="_30_days">30 days</string>
+    <string name="this_week">This week</string>
+    <string name="this_month">This month</string>
+    <string name="average_day">Average/day</string>
+    <string name="chart">Chart</string>
+    <string name="recent_access">Recent access</string>
+    <string name="successful">Successful</string>
+    <string name="go_to_statistics">Go to statistics</string>
 </resources>
