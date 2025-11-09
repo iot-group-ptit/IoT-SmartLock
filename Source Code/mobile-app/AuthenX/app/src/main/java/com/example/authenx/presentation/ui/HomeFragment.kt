@@ -45,6 +45,9 @@ class HomeFragment : Fragment() {
             btnStatistic.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_statisticFragment)
             }
+            btnManageUsers.setOnClickListener {
+                findNavController().navigate(R.id.action_homeFragment_to_userManagementFragment)
+            }
         }
     }
 

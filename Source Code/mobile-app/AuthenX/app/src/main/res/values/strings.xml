@@ -24,4 +24,25 @@
     <string name="recent_access">Recent access</string>
     <string name="successful">Successful</string>
     <string name="go_to_statistics">Go to statistics</string>
+    <string name="register">Register</string>
+    <string name="welcome_back">Welcome back!</string>
+    <string name="login_to_continue">Login to continue</string>
+    <string name="password">Password</string>
+    <string name="email">Email</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="login">Login</string>
+    <string name="don_t_have_an_account">Don\'t have an account?</string>
+    <string name="fullname">Fullname</string>
+    <string name="fill_in_all_fields_to_register">Fill in all fields to register</string>
+    <string name="create_new_account">Create new account</string>
+    <string name="phone_number">Phone number</string>
+    <string name="confirm_password">Confirm password</string>
+    <string name="i_agree_to_the_terms_of_use_and_privacy_policy">I agree to the Terms of Use and Privacy Policy</string>
+    <string name="have_an_account">Have an account?</string>
+    <string name="all">All</string>
+    <string name="search_user">Search user</string>
+    <string name="fingerprint">Fingerprint</string>
+    <string name="face">Face</string>
+    <string name="don_t_have_any_user">Don\'t have any user</string>
+    <string name="manage_users">Manage users</string>
 </resources>

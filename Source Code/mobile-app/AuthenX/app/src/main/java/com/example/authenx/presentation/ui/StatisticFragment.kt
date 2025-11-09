@@ -7,12 +7,16 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.authenx.R
 import com.example.authenx.databinding.FragmentStatisticBinding
+import com.example.authenx.domain.model.AccessLog
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
+import java.sql.Timestamp
 
 class StatisticFragment : Fragment() {
 
@@ -33,6 +37,7 @@ class StatisticFragment : Fragment() {
 
         setOnClickListener()
         setupMockData()
+        setupAccessLog()
     }
 
     private fun setupMockData() {
@@ -91,6 +96,28 @@ class StatisticFragment : Fragment() {
             }
         }
     }
+
+    private fun setupAccessLog() {
+        val mockLogs = listOf(
+            AccessLog(
+                "1",
+                "Nguyễn Văn A",
+                Timestamp(System.currentTimeMillis()),
+                true,
+                R.drawable.ic_person
+            ),
+            AccessLog("2", "Trần Thị B", Timestamp(System.currentTimeMillis() - 3600_000), false, R.drawable.ic_person),
+            AccessLog("3", "Lê Văn C", Timestamp(System.currentTimeMillis() - 7200_000), true, R.drawable.ic_person),
+            AccessLog("4", "Phạm Minh D", Timestamp(System.currentTimeMillis() - 10_800_000), true, R.drawable.ic_person),
+            AccessLog("5", "Hoàng Lan E", Timestamp(System.currentTimeMillis() - 14_400_000), false, R.drawable.ic_person)
+        )
+
+        val adapter = AccessLogAdapter()
+        binding.rvAccessLog.adapter = adapter
+        binding.rvAccessLog.layoutManager = LinearLayoutManager(requireContext())
+        adapter.submitList(mockLogs)
+    }
+
 
     override fun onDestroyView() {
         super.onDestroyView()

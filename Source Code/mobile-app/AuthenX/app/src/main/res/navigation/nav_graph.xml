@@ -19,6 +19,9 @@
         <action
             android:id="@+id/action_homeFragment_to_statisticFragment"
             app:destination="@id/statisticFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_userManagementFragment"
+            app:destination="@id/userManagementFragment" />
     </fragment>
     <fragment
         android:id="@+id/faceAuthenFragment"
@@ -34,4 +37,8 @@
         android:id="@+id/statisticFragment"
         android:name="com.example.authenx.presentation.ui.StatisticFragment"
         android:label="StatisticFragment" />
+    <fragment
+        android:id="@+id/userManagementFragment"
+        android:name="com.example.authenx.presentation.ui.UserManagementFragment"
+        android:label="UserManagementFragment" />
 </navigation>
