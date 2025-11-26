@@ -22,6 +22,9 @@
         <action
             android:id="@+id/action_homeFragment_to_userManagementFragment"
             app:destination="@id/userManagementFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_firmwareUpdateFragment"
+            app:destination="@id/firmwareUpdateFragment" />
     </fragment>
     <fragment
         android:id="@+id/faceAuthenFragment"
@@ -41,4 +44,8 @@
         android:id="@+id/userManagementFragment"
         android:name="com.example.authenx.presentation.ui.UserManagementFragment"
         android:label="UserManagementFragment" />
+    <fragment
+        android:id="@+id/firmwareUpdateFragment"
+        android:name="com.example.authenx.presentation.ui.FirmwareUpdateFragment"
+        android:label="FirmwareUpdateFragment" />
 </navigation>

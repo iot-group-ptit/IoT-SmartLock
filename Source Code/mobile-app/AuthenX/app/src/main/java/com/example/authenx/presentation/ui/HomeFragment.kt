@@ -48,6 +48,9 @@ class HomeFragment : Fragment() {
             btnManageUsers.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_userManagementFragment)
             }
+            btnUpdate.setOnClickListener {
+                findNavController().navigate(R.id.action_homeFragment_to_firmwareUpdateFragment)
+            }
         }
     }
 

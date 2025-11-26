@@ -45,4 +45,10 @@
     <string name="face">Face</string>
     <string name="don_t_have_any_user">Don\'t have any user</string>
     <string name="manage_users">Manage users</string>
+    <string name="update_later">Update later</string>
+    <string name="update_now">Update now</string>
+    <string name="firmware_update">Firmware update</string>
+    <string name="device_information">Device information</string>
+    <string name="device_smart_key_authenx">Device: Smart key AuthenX</string>
+    <string name="new_available_version">New available version</string>
 </resources>
