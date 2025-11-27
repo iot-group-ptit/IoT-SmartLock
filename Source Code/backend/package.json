@@ -24,9 +24,6 @@
     "express-rate-limit": "^7.1.5",
     "morgan": "^1.10.0",
     "validator": "^13.11.0",
-    "@tensorflow/tfjs-node": "^4.14.0",
-    "@vladmandic/face-api": "^1.7.12",
-    "canvas": "^2.11.2",
     "socket.io": "^4.6.0"
   },
   "devDependencies": {
