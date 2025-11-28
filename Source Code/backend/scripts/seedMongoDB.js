@@ -4,7 +4,8 @@ const Organization = require('../models/Organization');
 const User = require('../models/User');
 const Device = require('../models/Device');
 const RFIDCard = require('../models/RFIDCard');
-const BiometricData = require('../models/BiometricData');
+const Face = require('../models/Face');
+const Fingerprint = require('../models/Fingerprint');
 const Sensor = require('../models/Sensor');
 const Telemetry = require('../models/Telemetry');
 const AccessLog = require('../models/AccessLog');
@@ -15,14 +16,15 @@ const seedDatabase = async () => {
 
     // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+    console.log('Connected to MongoDB - smartlock_db');
 
     // Clear existing data
     await Organization.deleteMany({});
     await User.deleteMany({});
     await Device.deleteMany({});
     await RFIDCard.deleteMany({});
-    await BiometricData.deleteMany({});
+    await Face.deleteMany({});
+    await Fingerprint.deleteMany({});
     await Sensor.deleteMany({});
     await Telemetry.deleteMany({});
     await AccessLog.deleteMany({});
@@ -114,28 +116,61 @@ const seedDatabase = async () => {
     ]);
     console.log('RFID cards created');
 
-    // Create biometric data
-    await BiometricData.insertMany([
+    // Create face data (sample base64 - in production, use real images)
+    await Face.insertMany([
       {
-        bio_id: 'BIO001',
-        biometric_type: 'fingerprint',
-        registerd_at: new Date('2025-01-01'),
-        user_id: 'USER003'
+        face_id: 'FACE001',
+        user_id: 'USER003',
+        image_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', // Sample 1x1 pixel image
+        registered_at: new Date('2025-01-01'),
+        ai_trained: true,
+        quality_score: 95
       },
       {
-        bio_id: 'BIO002',
-        biometric_type: 'fingerprint',
-        registerd_at: new Date('2025-01-01'),
-        user_id: 'USER004'
-      },
-      {
-        bio_id: 'BIO003',
-        biometric_type: 'face',
-        registerd_at: new Date('2025-01-01'),
-        user_id: 'USER003'
+        face_id: 'FACE002',
+        user_id: 'USER004',
+        image_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        registered_at: new Date('2025-01-02'),
+        ai_trained: true,
+        quality_score: 90
       }
     ]);
-    console.log('Biometric data created');
+    console.log('Face data created');
+
+    // Create fingerprint data
+    await Fingerprint.insertMany([
+      {
+        fingerprint_id: 'FP001',
+        user_id: 'USER003',
+        template_base64: 'RlBJUjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=', // Sample fingerprint template
+        finger_position: 'index',
+        hand: 'right',
+        registered_at: new Date('2025-01-01'),
+        ai_trained: true,
+        quality_score: 88
+      },
+      {
+        fingerprint_id: 'FP002',
+        user_id: 'USER004',
+        template_base64: 'RlBJUjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=',
+        finger_position: 'thumb',
+        hand: 'right',
+        registered_at: new Date('2025-01-02'),
+        ai_trained: true,
+        quality_score: 92
+      },
+      {
+        fingerprint_id: 'FP003',
+        user_id: 'USER003',
+        template_base64: 'RlBJUjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=',
+        finger_position: 'middle',
+        hand: 'left',
+        registered_at: new Date('2025-01-03'),
+        ai_trained: true,
+        quality_score: 85
+      }
+    ]);
+    console.log('Fingerprint data created');
 
     // Create sensors
     await Sensor.insertMany([
@@ -212,7 +247,8 @@ const seedDatabase = async () => {
     console.log(`   - Users: ${await User.countDocuments()}`);
     console.log(`   - Devices: ${await Device.countDocuments()}`);
     console.log(`   - RFID Cards: ${await RFIDCard.countDocuments()}`);
-    console.log(`   - Biometric Data: ${await BiometricData.countDocuments()}`);
+    console.log(`   - Face Data: ${await Face.countDocuments()}`);
+    console.log(`   - Fingerprints: ${await Fingerprint.countDocuments()}`);
     console.log(`   - Sensors: ${await Sensor.countDocuments()}`);
     console.log(`   - Telemetry: ${await Telemetry.countDocuments()}`);
     console.log(`   - Access Logs: ${await AccessLog.countDocuments()}`);

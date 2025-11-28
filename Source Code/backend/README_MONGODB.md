@@ -56,10 +56,9 @@ Tạo file `.env`:
 PORT=3000
 NODE_ENV=development
 
-# MongoDB
-MONGODB_URI=mongodb://localhost:27017/smartlock_db
-# Or MongoDB Atlas:
-# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/smartlock_db
+# MongoDB Atlas:
+# MONGODB_URI=mongodb+srv://van123:van123@smartlockdb.eevtzyc.mongodb.net/smartlock_db?retryWrites=true&w=majority&appName=smartlockdb
+
 
 # JWT
 JWT_SECRET=your-super-secret-jwt-key-change-this
