@@ -29,17 +29,15 @@
     "morgan": "^1.10.0",
     "mqtt": "^5.3.0",
     "multer": "^1.4.5-lts.1",
-<<<<<<< HEAD
-    "socket.io": "^4.6.0",
-    "validator": "^13.11.0"
-=======
     "cors": "^2.8.5",
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5",
     "morgan": "^1.10.0",
     "validator": "^13.11.0",
+    "@tensorflow/tfjs-node": "^4.14.0",
+    "@vladmandic/face-api": "^1.7.12",
+    "canvas": "^2.11.2",
     "socket.io": "^4.6.0"
->>>>>>> 8f1aac250c6b5ae7ce5bb1cf402fa4aa915139ad
   },
   "devDependencies": {
     "jest": "^29.7.0",
