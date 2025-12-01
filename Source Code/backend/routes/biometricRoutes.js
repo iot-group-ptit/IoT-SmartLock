@@ -8,11 +8,10 @@ const { validateRFIDCard, validateFingerprint } = require('../middleware/validat
 router.use(verifyToken);
 
 // RFID Card routes
-router.post('/rfid', isAdminOrManager, validateRFIDCard, biometricController.addRFIDCard);
 router.get('/rfid/user/:user_id', biometricController.getUserRFIDCards);
 
 // Fingerprint routes
-router.post('/fingerprint', isAdminOrManager, validateFingerprint, biometricController.addBiometricData);
+router.post('/fingerprint', isAdminOrManager, biometricController.addFingerprint);
 router.get('/fingerprint/user/:user_id', biometricController.getUserFingerprints);
 
 module.exports = router;

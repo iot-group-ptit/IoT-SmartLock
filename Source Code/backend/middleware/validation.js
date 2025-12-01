@@ -34,11 +34,11 @@ const validateUserRegistration = (req, res, next) => {
 
 // Validate user login
 const validateUserLogin = (req, res, next) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
   const errors = [];
 
-  if (!username || username.trim().length === 0) {
-    errors.push('Username is required');
+  if (!email || !validator.isEmail(email)) {
+    errors.push('Valid email is required');
   }
 
   if (!password || password.trim().length === 0) {

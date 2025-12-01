@@ -23,6 +23,9 @@ class MQTTService {
       CONTROL: "smartlock/control",
       UNLOCK: "smartlock/control/unlock",
       LOCK: "smartlock/control/lock",
+      ENROLL_START: "smartlock/enroll/start",
+      ENROLL_SUCCESS: "smartlock/enroll/success",
+      ENROLL_FAILED: "smartlock/enroll/failed",
     };
   }
 
@@ -86,6 +89,8 @@ class MQTTService {
       this.topics.RFID,
       this.topics.FACE,
       this.topics.STATUS,
+      this.topics.ENROLL_SUCCESS,
+      this.topics.ENROLL_FAILED,
     ];
 
     topicsToSubscribe.forEach((topic) => {
@@ -155,7 +160,7 @@ class MQTTService {
       console.log(`\n📨 Nhận message từ topic: ${topic}`);
       console.log("Dữ liệu:", data);
 
-      // Xử lý theo từng loại cảm biến
+      // Xử lý theo từng loại topic
       switch (topic) {
         case this.topics.FINGERPRINT:
           this.handleFingerprint(data);
@@ -169,11 +174,67 @@ class MQTTService {
         case this.topics.STATUS:
           this.handleStatus(data);
           break;
+        case this.topics.ENROLL_SUCCESS:
+          this.handleEnrollSuccess(data);
+          break;
+        case this.topics.ENROLL_FAILED:
+          this.handleEnrollFailed(data);
+          break;
         default:
           console.log("Topic không xác định");
       }
     } catch (error) {
       console.error("Lỗi xử lý message:", error);
+    }
+  }
+
+  // Xử lý enrollment thành công
+  async handleEnrollSuccess(data) {
+    console.log("✓ Đăng ký vân tay thành công!");
+    console.log("Dữ liệu:", data);
+    
+    try {
+      const Fingerprint = require('../models/Fingerprint');
+      const { fingerprintId, user_id, finger_position, hand } = data;
+
+      // Lưu vào database
+      const fingerprint = await Fingerprint.create({
+        fingerprint_id: String(fingerprintId),
+        user_id,
+        finger_position: finger_position || 'unknown',
+        hand: hand || 'unknown',
+        template_base64: '', // ESP32 không gửi template
+        registered_at: new Date()
+      });
+
+      console.log(`✓ Đã lưu vân tay ID ${fingerprintId} vào database`);
+
+      // Gửi WebSocket notification cho app (nếu có)
+      if (global.io) {
+        global.io.emit('fingerprint_enrolled', {
+          success: true,
+          fingerprintId: fingerprint.fingerprint_id,
+          user_id: fingerprint.user_id,
+          finger_position: fingerprint.finger_position,
+          hand: fingerprint.hand
+        });
+      }
+    } catch (error) {
+      console.error('Lỗi lưu fingerprint:', error);
+    }
+  }
+
+  // Xử lý enrollment thất bại
+  handleEnrollFailed(data) {
+    console.log("✗ Đăng ký vân tay thất bại");
+    console.log("Lý do:", data.reason || 'Unknown error');
+
+    // Gửi WebSocket notification
+    if (global.io) {
+      global.io.emit('fingerprint_enrolled', {
+        success: false,
+        reason: data.reason || 'Enrollment failed'
+      });
     }
   }
 

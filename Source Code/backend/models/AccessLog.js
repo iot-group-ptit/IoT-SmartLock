@@ -4,9 +4,9 @@ const accessLogSchema = new mongoose.Schema(
   {
     log_id: {
       type: String,
-      required: true,
       unique: true,
       trim: true,
+      sparse: true, // Allow multiple null values
     },
     access_method: {
       type: String,
@@ -17,7 +17,7 @@ const accessLogSchema = new mongoose.Schema(
     result: {
       type: String,
       required: true,
-      enum: ["success", "failed"],
+      enum: ["success", "failed", "denied"],
       trim: true,
     },
     time: {
@@ -31,6 +31,10 @@ const accessLogSchema = new mongoose.Schema(
     device_id: {
       type: String,
       ref: "Device",
+    },
+    additional_info: {
+      type: String,
+      trim: true,
     },
   },
   {

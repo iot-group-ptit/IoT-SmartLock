@@ -7,10 +7,10 @@ const mqttClient = require('../config/mqtt');
 // Authenticate RFID card
 const authenticateRFID = async (req, res, next) => {
   try {
-    const { card_uid, device_id } = req.body;
+    const { cardId, device_id } = req.body;
 
-    // Find RFID card with user info
-    const card = await RFIDCard.findOne({ uid: card_uid })
+    // Find RFID card by uid (cardId from ESP32 = uid in DB)
+    const card = await RFIDCard.findOne({ uid: cardId })
       .populate('user_id', 'user_id full_name')
       .lean();
 
@@ -23,6 +23,7 @@ const authenticateRFID = async (req, res, next) => {
       if (card.expired_at && new Date(card.expired_at) < new Date()) {
         accessResult = 'denied';
         message = 'Card expired';
+        userId = card.user_id.user_id;
       } else {
         accessResult = 'success';
         userId = card.user_id.user_id;
@@ -38,21 +39,23 @@ const authenticateRFID = async (req, res, next) => {
       device_id
     });
 
-    // Send MQTT response to device
-    const topic = `smartlock/${device_id}/response`;
-    mqttClient.publish(topic, {
+    // Send MQTT response to device via control topic
+    const unlockCommand = accessResult === 'success' ? 'unlock' : 'deny';
+    mqttClient.publish('smartlock/control/unlock', JSON.stringify({
+      command: unlockCommand,
       success: accessResult === 'success',
       method: 'rfid',
+      cardId,
       message,
-      timestamp: new Date().toISOString()
-    });
+      timestamp: Date.now()
+    }));
 
     // Send notification if failed or denied
     if (accessResult !== 'success' && global.io) {
       global.io.emit('access_alert', {
         type: 'rfid',
         result: accessResult,
-        card_uid,
+        cardId,
         device_id,
         timestamp: new Date()
       });
@@ -71,24 +74,29 @@ const authenticateRFID = async (req, res, next) => {
 // Authenticate fingerprint
 const authenticateFingerprint = async (req, res, next) => {
   try {
-    const { bio_id, device_id } = req.body;
+    const { fingerprintId, device_id } = req.body;
 
-    // Find fingerprint with user info
-    const fingerprint = await BiometricData.findOne({ 
-      bio_id, 
-      biometric_type: 'fingerprint' 
+    // Find fingerprint by fingerprint_id
+    const Fingerprint = require('../models/Fingerprint');
+    const fingerprint = await Fingerprint.findOne({ 
+      fingerprint_id: String(fingerprintId)
     })
-      .populate('user_id', 'user_id full_name')
       .lean();
 
     let accessResult = 'failed';
     let userId = null;
+    let userName = 'Unknown';
     let message = 'Unknown fingerprint';
 
-    if (fingerprint && fingerprint.user_id) {
-      accessResult = 'success';
-      userId = fingerprint.user_id.user_id;
-      message = `Access granted for ${fingerprint.user_id.full_name}`;
+    if (fingerprint) {
+      // Get user info
+      const user = await User.findOne({ user_id: fingerprint.user_id }).lean();
+      if (user) {
+        accessResult = 'success';
+        userId = user.user_id;
+        userName = user.full_name;
+        message = `Access granted for ${user.full_name}`;
+      }
     }
 
     // Log access attempt
@@ -97,24 +105,26 @@ const authenticateFingerprint = async (req, res, next) => {
       access_method: 'fingerprint',
       result: accessResult,
       device_id,
-      additional_info: JSON.stringify({ bio_id })
+      additional_info: JSON.stringify({ fingerprintId })
     });
 
-    // Send MQTT response
-    const topic = `smartlock/${device_id}/response`;
-    mqttClient.publish(topic, {
+    // Send MQTT response via control topic
+    const unlockCommand = accessResult === 'success' ? 'unlock' : 'deny';
+    mqttClient.publish('smartlock/control/unlock', JSON.stringify({
+      command: unlockCommand,
       success: accessResult === 'success',
       method: 'fingerprint',
+      fingerprintId,
       message,
-      timestamp: new Date().toISOString()
-    });
+      timestamp: Date.now()
+    }));
 
     // Send notification if failed
     if (accessResult !== 'success' && global.io) {
       global.io.emit('access_alert', {
         type: 'fingerprint',
         result: accessResult,
-        bio_id,
+        fingerprintId,
         device_id,
         timestamp: new Date()
       });

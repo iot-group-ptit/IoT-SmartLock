@@ -1,5 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 const Organization = require('../models/Organization');
 const User = require('../models/User');
 const Device = require('../models/Device');
@@ -39,11 +40,17 @@ const seedDatabase = async () => {
     });
     console.log('Organization created');
 
-    // Create users
+    // Hash passwords
+    const hashedAdminPwd = await bcrypt.hash('admin123', 10);
+    const hashedManagerPwd = await bcrypt.hash('manager123', 10);
+    const hashedUserPwd = await bcrypt.hash('user123', 10);
+
+    // Create users (using insertMany with pre-hashed passwords)
     const users = await User.insertMany([
       {
         user_id: 'USER001',
         email: 'admin@ptit.edu.vn',
+        password: hashedAdminPwd,
         full_name: 'System Administrator',
         phone: '0123456789',
         role: 'admin',
@@ -52,6 +59,7 @@ const seedDatabase = async () => {
       {
         user_id: 'USER002',
         email: 'manager@ptit.edu.vn',
+        password: hashedManagerPwd,
         full_name: 'User Manager',
         phone: '0987654321',
         role: 'user_manager',
@@ -60,6 +68,7 @@ const seedDatabase = async () => {
       {
         user_id: 'USER003',
         email: 'user1@ptit.edu.vn',
+        password: hashedUserPwd,
         full_name: 'Nguyen Van A',
         phone: '0123111111',
         role: 'user',
@@ -68,6 +77,7 @@ const seedDatabase = async () => {
       {
         user_id: 'USER004',
         email: 'user2@ptit.edu.vn',
+        password: hashedUserPwd,
         full_name: 'Tran Thi B',
         phone: '0123222222',
         role: 'user',
@@ -97,77 +107,82 @@ const seedDatabase = async () => {
     ]);
     console.log('Devices created');
 
-    // Create RFID cards
+    // Create RFID cards (UID format from ESP32, user_id as ObjectId)
     await RFIDCard.insertMany([
       {
         card_id: 'CARD001',
-        uid: 'A1B2C3D4E5',
+        uid: 'ad7dce01', // UID from ESP32 in hex format
         issued_at: new Date('2025-01-01'),
         expired_at: new Date('2026-01-01'),
-        user_id: 'USER003'
+        user_id: users[2]._id // USER003 (Nguyen Van A)
       },
       {
         card_id: 'CARD002',
-        uid: 'F6G7H8I9J0',
+        uid: 'b3bbe156', // Second card UID
         issued_at: new Date('2025-01-01'),
         expired_at: new Date('2026-01-01'),
-        user_id: 'USER004'
+        user_id: users[3]._id // USER004 (Tran Thi B)
+      },
+      {
+        card_id: 'CARD003',
+        uid: '1a2b3c4d', // Test card (expired)
+        issued_at: new Date('2024-01-01'),
+        expired_at: new Date('2024-12-31'),
+        user_id: users[2]._id // USER003
       }
     ]);
     console.log('RFID cards created');
 
-    // Create face data (sample base64 - in production, use real images)
+    // Create face data (face_id as number from ESP32)
     await Face.insertMany([
       {
         face_id: 'FACE001',
         user_id: 'USER003',
         image_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', // Sample 1x1 pixel image
-        registered_at: new Date('2025-01-01'),
-        ai_trained: true,
-        quality_score: 95
+        registered_at: new Date('2025-01-01')
       },
       {
         face_id: 'FACE002',
         user_id: 'USER004',
         image_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-        registered_at: new Date('2025-01-02'),
-        ai_trained: true,
-        quality_score: 90
+        registered_at: new Date('2025-01-02')
       }
     ]);
     console.log('Face data created');
 
-    // Create fingerprint data
+    // Create fingerprint data (fingerprint_id as number from ESP32)
     await Fingerprint.insertMany([
       {
-        fingerprint_id: 'FP001',
+        fingerprint_id: '1', // ID 1 in ESP32 sensor
         user_id: 'USER003',
         template_base64: 'RlBJUjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=', // Sample fingerprint template
         finger_position: 'index',
         hand: 'right',
-        registered_at: new Date('2025-01-01'),
-        ai_trained: true,
-        quality_score: 88
+        registered_at: new Date('2025-01-01')
       },
       {
-        fingerprint_id: 'FP002',
+        fingerprint_id: '2', // ID 2 in ESP32 sensor
         user_id: 'USER004',
         template_base64: 'RlBJUjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=',
         finger_position: 'thumb',
         hand: 'right',
-        registered_at: new Date('2025-01-02'),
-        ai_trained: true,
-        quality_score: 92
+        registered_at: new Date('2025-01-02')
       },
       {
-        fingerprint_id: 'FP003',
+        fingerprint_id: '3', // ID 3 in ESP32 sensor
         user_id: 'USER003',
         template_base64: 'RlBJUjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=',
         finger_position: 'middle',
         hand: 'left',
-        registered_at: new Date('2025-01-03'),
-        ai_trained: true,
-        quality_score: 85
+        registered_at: new Date('2025-01-03')
+      },
+      {
+        fingerprint_id: '4', // ID 4 in ESP32 sensor (for testing invalid)
+        user_id: 'USER004',
+        template_base64: 'RlBJUjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=',
+        finger_position: 'index',
+        hand: 'left',
+        registered_at: new Date('2025-01-04')
       }
     ]);
     console.log('Fingerprint data created');

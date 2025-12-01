@@ -4,7 +4,15 @@ const User = require('../models/User');
 // Register new user
 const register = async (req, res, next) => {
   try {
-    const { user_id, email, full_name, phone, role, org_id } = req.body;
+    const { user_id, email, password, full_name, phone, role, org_id } = req.body;
+
+    // Validation
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { user_id }] });
@@ -16,22 +24,40 @@ const register = async (req, res, next) => {
       });
     }
 
-    // Create new user
+    // Create new user (password will be hashed by pre-save hook)
     const user = await User.create({
       user_id,
       email,
+      password,
       full_name,
       phone,
       role: role || 'user',
       org_id
     });
 
+    // Generate tokens
+    const token = jwt.sign(
+      { userId: user.user_id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '24h' }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: user.user_id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: process.env.JWT_REFRESH_EXPIRE || '7d' }
+    );
+
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
-      data: {
-        userId: user.user_id,
-        email: user.email
+      token,
+      refreshToken,
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role
       }
     });
   } catch (error) {
@@ -39,18 +65,36 @@ const register = async (req, res, next) => {
   }
 };
 
-// Login user (biometric authentication)
+// Login user
 const login = async (req, res, next) => {
   try {
-    const { user_id } = req.body;
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
 
     // Find user
-    const user = await User.findOne({ user_id });
+    const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'User not found'
+        message: 'Invalid email or password'
+      });
+    }
+
+    // Check password
+    const isPasswordValid = await user.comparePassword(password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
       });
     }
 
@@ -71,15 +115,13 @@ const login = async (req, res, next) => {
     res.json({
       success: true,
       message: 'Login successful',
-      data: {
-        token,
-        refreshToken,
-        user: {
-          user_id: user.user_id,
-          email: user.email,
-          full_name: user.full_name,
-          role: user.role
-        }
+      token,
+      refreshToken,
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role
       }
     });
   } catch (error) {
