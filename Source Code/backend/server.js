@@ -18,8 +18,6 @@ const routes = {
   access: require("./routes/accessRoutes"),
   biometric: require("./routes/biometricRoutes"),
   logs: require("./routes/logRoutes"),
-  notifications: require("./routes/notificationRoutes"),
-  organizations: require("./routes/organizationRoutes"),
   devices: require("./routes/deviceRoutes"),
   sensors: require("./routes/sensorRoutes"),
   control: require("./routes/commandRoutes"),
@@ -86,7 +84,7 @@ function setupMqttSubscriptions() {
 }
 
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     await database.connect();

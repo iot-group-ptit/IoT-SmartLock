@@ -10,11 +10,9 @@ router.use(verifyToken);
 router.get('/commands', commandController.getAllCommands);
 router.get('/commands/:command_id', commandController.getCommandById);
 router.post('/commands', isAdminOrManager, commandController.sendCommand);
-router.patch('/commands/:command_id/status', commandController.updateCommandStatus);
 
 // Firmware update routes
 router.get('/firmware', commandController.getFirmwareUpdates);
 router.post('/firmware', isAdminOrManager, commandController.initiateFirmwareUpdate);
-router.patch('/firmware/:update_id/status', commandController.updateFirmwareStatus);
 
 module.exports = router;

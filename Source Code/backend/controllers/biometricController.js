@@ -1,50 +1,7 @@
 const RFIDCard = require('../models/RFIDCard');
-const BiometricData = require('../models/BiometricData');
+const Fingerprint = require('../models/Fingerprint');
+const Face = require('../models/Face');
 const User = require('../models/User');
-
-// Add RFID card
-const addRFIDCard = async (req, res, next) => {
-  try {
-    const { card_id, uid, issued_at, expired_at, user_id } = req.body;
-
-    // Check if card already exists
-    const existingCard = await RFIDCard.findOne({ uid });
-
-    if (existingCard) {
-      return res.status(409).json({
-        success: false,
-        message: 'Card UID already registered'
-      });
-    }
-
-    // Check if user exists
-    const user = await User.findOne({ user_id });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Insert card
-    const card = await RFIDCard.create({
-      card_id,
-      uid,
-      issued_at,
-      expired_at,
-      user_id
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'RFID card added successfully',
-      data: { cardId: card.card_id }
-    });
-  } catch (error) {
-    next(error);
-  }
-};
 
 // Get user's RFID cards
 const getUserRFIDCards = async (req, res, next) => {
@@ -58,45 +15,6 @@ const getUserRFIDCards = async (req, res, next) => {
     res.json({
       success: true,
       data: cards
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Update RFID card
-const updateRFIDCard = async (req, res, next) => {
-  try {
-    const { card_id } = req.params;
-    const { uid, expired_at } = req.body;
-
-    const updateData = {};
-    if (uid !== undefined) updateData.uid = uid;
-    if (expired_at !== undefined) updateData.expired_at = expired_at;
-
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No fields to update'
-      });
-    }
-
-    const card = await RFIDCard.findOneAndUpdate(
-      { card_id },
-      updateData,
-      { new: true }
-    );
-
-    if (!card) {
-      return res.status(404).json({
-        success: false,
-        message: 'Card not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Card updated successfully'
     });
   } catch (error) {
     next(error);
@@ -126,10 +44,10 @@ const deleteRFIDCard = async (req, res, next) => {
   }
 };
 
-// Add biometric data (fingerprint or face)
-const addBiometricData = async (req, res, next) => {
+// Add fingerprint (with MQTT enrollment flow)
+const addFingerprint = async (req, res, next) => {
   try {
-    const { bio_id, biometric_type, data_template, user_id } = req.body;
+    const { user_id, finger_position, hand } = req.body;
 
     // Check if user exists
     const user = await User.findOne({ user_id });
@@ -141,29 +59,46 @@ const addBiometricData = async (req, res, next) => {
       });
     }
 
-    // Check if bio_id already exists
-    const existing = await BiometricData.findOne({ bio_id });
+    // Check if this finger already registered
+    const existing = await Fingerprint.findOne({ 
+      user_id, 
+      finger_position, 
+      hand 
+    });
 
     if (existing) {
       return res.status(409).json({
         success: false,
-        message: 'Biometric ID already exists'
+        message: `${hand} ${finger_position} finger already registered`
       });
     }
 
-    // Insert biometric data
-    const biometric = await BiometricData.create({
-      bio_id,
-      biometric_type,
-      data_template,
-      user_id
+    // Publish MQTT to start enrollment on ESP32
+    const mqttClient = require('../config/mqtt');
+    const enrollData = {
+      command: 'enroll_start',
+      user_id,
+      finger_position,
+      hand,
+      timestamp: Date.now()
+    };
+    
+    mqttClient.publish('smartlock/enroll/start', JSON.stringify(enrollData));
+
+    // Return response
+    res.status(202).json({
+      success: true,
+      message: 'Enrollment started. Please place finger on sensor.',
+      data: {
+        status: 'pending',
+        instruction: 'Place your finger on the sensor 3 times'
+      }
     });
 
-    res.status(201).json({
-      success: true,
-      message: `${biometric_type} added successfully`,
-      data: { bioId: biometric.bio_id }
-    });
+    // Note: When ESP32 completes enrollment, it will publish to 
+    // 'smartlock/enroll/success' with fingerprintId
+    // MQTT handler in mqtt.js will save to database
+
   } catch (error) {
     next(error);
   }
@@ -174,11 +109,8 @@ const getUserFingerprints = async (req, res, next) => {
   try {
     const { user_id } = req.params;
 
-    const fingerprints = await BiometricData.find({ 
-      user_id, 
-      biometric_type: 'fingerprint' 
-    })
-      .select('bio_id biometric_type registered_at')
+    const fingerprints = await Fingerprint.find({ user_id })
+      .select('fingerprint_id finger_position hand registered_at')
       .lean();
 
     res.json({
@@ -190,50 +122,12 @@ const getUserFingerprints = async (req, res, next) => {
   }
 };
 
-// Update fingerprint
-const updateFingerprint = async (req, res, next) => {
-  try {
-    const { bio_id } = req.params;
-    const { data_template } = req.body;
-
-    if (!data_template) {
-      return res.status(400).json({
-        success: false,
-        message: 'No data to update'
-      });
-    }
-
-    const fingerprint = await BiometricData.findOneAndUpdate(
-      { bio_id, biometric_type: 'fingerprint' },
-      { data_template },
-      { new: true }
-    );
-
-    if (!fingerprint) {
-      return res.status(404).json({
-        success: false,
-        message: 'Fingerprint not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Fingerprint updated successfully'
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 // Delete fingerprint
 const deleteFingerprint = async (req, res, next) => {
   try {
-    const { bio_id } = req.params;
+    const { fingerprint_id } = req.params;
 
-    const fingerprint = await BiometricData.findOneAndDelete({ 
-      bio_id, 
-      biometric_type: 'fingerprint' 
-    });
+    const fingerprint = await Fingerprint.findOneAndDelete({ fingerprint_id });
 
     if (!fingerprint) {
       return res.status(404).json({
@@ -252,12 +146,9 @@ const deleteFingerprint = async (req, res, next) => {
 };
 
 module.exports = {
-  addRFIDCard,
   getUserRFIDCards,
-  updateRFIDCard,
   deleteRFIDCard,
-  addBiometricData,
+  addFingerprint,
   getUserFingerprints,
-  updateFingerprint,
   deleteFingerprint
 };

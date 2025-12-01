@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { promisePool } = require('../config/database');
+const User = require('../models/User');
 
 // Verify JWT token
 const verifyToken = async (req, res, next) => {
@@ -16,27 +16,18 @@ const verifyToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check if user still exists and is active
-    const [users] = await promisePool.query(
-      'SELECT id, username, email, role, is_active FROM users WHERE id = ?',
-      [decoded.userId]
-    );
+    const mongoUser = await User.findOne({ user_id: decoded.userId }).lean();
 
-    if (users.length === 0) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'User not found.' 
+    if (!mongoUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found.'
       });
     }
 
-    if (!users[0].is_active) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'User account is inactive.' 
-      });
-    }
-
-    req.user = users[0];
+    req.user = mongoUser;
     next();
+
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ 

@@ -15,13 +15,4 @@ router.get('/:device_id', deviceController.getDeviceById);
 // Create device (admin/manager only)
 router.post('/', isAdminOrManager, deviceController.createDevice);
 
-// Update device (admin/manager only)
-router.put('/:device_id', isAdminOrManager, deviceController.updateDevice);
-
-// Delete device (admin/manager only)
-router.delete('/:device_id', isAdminOrManager, deviceController.deleteDevice);
-
-// Get device statistics
-router.get('/:device_id/statistics', deviceController.getDeviceStatistics);
-
 module.exports = router;
