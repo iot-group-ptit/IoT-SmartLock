@@ -239,36 +239,52 @@ class MQTTService {
   }
 
   // Xử lý dữ liệu vân tay
-  handleFingerprint(data) {
-    console.log("🔐 Xử lý xác thực vân tay...");
-    const isValid = true;
+  async handleFingerprint(data) {
+    console.log("Xử lý xác thực vân tay...");
+    console.log("Dữ liệu nhận được:", data);
 
-    if (isValid) {
-      console.log("✓ Vân tay hợp lệ - Mở khóa");
-      this.unlockDoor("fingerprint", data);
-    } else {
-      console.log("✗ Vân tay không hợp lệ");
-      this.publish(this.topics.CONTROL, {
-        action: "deny",
-        reason: "invalid_fingerprint",
+    try {
+      // Gọi API backend để xác thực
+      const axios = require('axios');
+      const response = await axios.post('http://localhost:5000/api/access/fingerprint', {
+        fingerprintId: data.fingerprintId,
+        device_id: data.device_id || 'DEV001'
       });
+
+      if (response.data.success) {
+        console.log("✓ Vân tay hợp lệ - Mở khóa");
+        console.log("User:", response.data.message);
+      } else {
+        console.log("✗ Vân tay không hợp lệ");
+      }
+    } catch (error) {
+      console.error('Lỗi xác thực vân tay:', error.message);
     }
   }
 
   // Xử lý dữ liệu RFID
-  handleRFID(data) {
-    console.log("💳 Xử lý xác thực RFID...");
-    const isValid = true;
+  async handleRFID(data) {
+    console.log("Xử lý xác thực RFID...");
+    console.log("Dữ liệu nhận được:", data);
 
-    if (isValid) {
-      console.log("✓ Thẻ RFID hợp lệ - Mở khóa");
-      this.unlockDoor("rfid", data);
-    } else {
-      console.log("✗ Thẻ RFID không hợp lệ");
-      this.publish(this.topics.CONTROL, {
-        action: "deny",
-        reason: "invalid_card",
+    try {
+      // Gọi API backend để xác thực
+      const axios = require('axios');
+      const response = await axios.post('http://localhost:5000/api/access/rfid', {
+        cardId: data.cardId,
+        device_id: data.device_id || 'DEV001'
       });
+
+      if (response.data.success) {
+        console.log("✓ Thẻ RFID hợp lệ - Mở khóa");
+        console.log("User:", response.data.message);
+        
+        // Publish MQTT response đã được xử lý trong accessController
+      } else {
+        console.log("✗ Thẻ RFID không hợp lệ");
+      }
+    } catch (error) {
+      console.error('Lỗi xác thực RFID:', error.message);
     }
   }
 
@@ -291,7 +307,7 @@ class MQTTService {
 
   // Xử lý trạng thái thiết bị
   handleStatus(data) {
-    console.log("📊 Cập nhật trạng thái thiết bị:", data);
+    console.log("Cập nhật trạng thái thiết bị:", data);
   }
 
   // Gửi lệnh mở khóa
@@ -304,7 +320,7 @@ class MQTTService {
     };
 
     this.publish(this.topics.UNLOCK, command);
-    console.log("📤 Đã gửi lệnh mở khóa");
+    console.log("Đã gửi lệnh mở khóa");
   }
 
   // Gửi lệnh khóa cửa
@@ -315,7 +331,7 @@ class MQTTService {
     };
 
     this.publish(this.topics.LOCK, command);
-    console.log("📤 Đã gửi lệnh khóa cửa");
+    console.log("Đã gửi lệnh khóa cửa");
   }
 
   // Publish message lên MQTT
