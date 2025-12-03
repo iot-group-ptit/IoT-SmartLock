@@ -1,13 +1,16 @@
 package com.example.authenx.domain.model
 
+import com.google.gson.annotations.SerializedName
 import java.util.*
 
 data class User(
-    val id: String,
-    val userName: String,
-    val hasFingerprint: Boolean = false,
-    val hasFace: Boolean = false,
-    val hasRfid: Boolean = false,
-    val lastAccess: Date,
-    val avatarRes: Int
+    @SerializedName("user_id")
+    val id: String = "",
+    val email: String = "",
+    @SerializedName("full_name")
+    val fullName: String = "",
+    val phone: String = "",
+    val role: String = "",
+    @SerializedName("created_at")
+    val createdAt: Date = Date(),
 )

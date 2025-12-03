@@ -1,0 +1,137 @@
+package com.example.authenx.presentation.ui.auth.login
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
+import com.example.authenx.R
+import com.example.authenx.data.local.AuthManager
+import com.example.authenx.databinding.FragmentLoginBinding
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@AndroidEntryPoint
+class LoginFragment : Fragment() {
+
+    private var _binding: FragmentLoginBinding? = null
+    private val binding get() = _binding!!
+    
+    private val viewModel: LoginViewModel by viewModels()
+    
+    @Inject
+    lateinit var authManager: AuthManager
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        _binding = FragmentLoginBinding.inflate(inflater, container, false)
+        val view = binding.root
+        return view
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val savedStateHandle = findNavController().currentBackStackEntry?.savedStateHandle
+
+        savedStateHandle?.getLiveData<String>("email")?.observe(viewLifecycleOwner) {
+            binding.etEmail.setText(it)
+        }
+        savedStateHandle?.getLiveData<String>("password")?.observe(viewLifecycleOwner) {
+            binding.etPassword.setText(it)
+        }
+
+        setOnClickListener()
+    }
+
+    private fun setOnClickListener() {
+        with(binding) {
+            btnLogin.setOnClickListener {
+                handleLogin()
+            }
+            tvSignUp.setOnClickListener {
+                findNavController().navigate(R.id.action_loginFragment_to_registerFragment)
+            }
+        }
+    }
+    
+    private fun handleLogin() {
+        val email = binding.etEmail.text.toString().trim()
+        val password = binding.etPassword.text.toString().trim()
+        
+        // Validation
+        if (email.isEmpty()) {
+            binding.etEmail.error = "Email is required"
+            return
+        }
+        
+        if (password.isEmpty()) {
+            binding.etPassword.error = "Password is required"
+            return
+        }
+        
+        // Show loading
+        showLoading(true)
+        
+        // Call API
+        lifecycleScope.launch {
+            try {
+                val response = viewModel.login(email, password)
+                showLoading(false)
+                if (response.success && response.token != null) {
+                    // Save token and user info
+                    authManager.saveToken(response.token)
+                    response.refreshToken?.let { authManager.saveRefreshToken(it) }
+                    
+                    response.user?.let { user ->
+                        authManager.saveUserInfo(
+                            userId = user.id,
+                            email = user.email,
+                            name = user.fullName,
+                            role = user.role
+                        )
+                    }
+                    
+                    // Show success message
+                    Toast.makeText(
+                        requireContext(),
+                        "Login successful!",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    findNavController().navigate(R.id.action_loginFragment_to_nav_graph)
+                } else {
+                    Toast.makeText(
+                        requireContext(),
+                        response.message ?: "Login failed",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                
+            } catch (e: Exception) {
+                showLoading(false)
+                Toast.makeText(
+                    requireContext(),
+                    "Error: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+    
+    private fun showLoading(isLoading: Boolean) {
+        binding.btnLogin.isEnabled = !isLoading
+    }
+    
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}

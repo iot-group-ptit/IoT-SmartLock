@@ -1,4 +1,48 @@
 package com.example.authenx.di
 
+import com.example.authenx.data.local.AuthManager
+import com.example.authenx.data.remote.socket.SocketManager
+import com.example.authenx.data.repository.AuthRepositoryImpl
+import com.example.authenx.data.repository.StatisticsRepositoryImpl
+import com.example.authenx.data.repository.UserRepositoryImpl
+import com.example.authenx.data.remote.source.AuthDataSource
+import com.example.authenx.data.remote.source.StatisticsDataSource
+import com.example.authenx.data.remote.source.UserDataSource
+import com.example.authenx.domain.repository.AuthRepository
+import com.example.authenx.domain.repository.StatisticsRepository
+import com.example.authenx.domain.repository.UserRepository
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
 object RepositoryModule {
+    @Provides
+    @Singleton
+    fun provideAuthRepository(authDataSource: AuthDataSource): AuthRepository {
+        return AuthRepositoryImpl(authDataSource)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideUserRepository(
+        userDataSource: UserDataSource, 
+        authManager: AuthManager,
+        socketManager: SocketManager
+    ): UserRepository {
+        return UserRepositoryImpl(userDataSource, authManager, socketManager)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideStatisticsRepository(
+        statisticsDataSource: StatisticsDataSource,
+        authManager: AuthManager,
+        socketManager: SocketManager
+    ): StatisticsRepository {
+        return StatisticsRepositoryImpl(statisticsDataSource, authManager, socketManager)
+    }
 }
