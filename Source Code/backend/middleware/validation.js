@@ -2,12 +2,8 @@ const validator = require('validator');
 
 // Validate user registration
 const validateUserRegistration = (req, res, next) => {
-  const { username, email, password, full_name } = req.body;
+  const { email, password, full_name, phone } = req.body;
   const errors = [];
-
-  if (!username || username.length < 3) {
-    errors.push('Username must be at least 3 characters long');
-  }
 
   if (!email || !validator.isEmail(email)) {
     errors.push('Invalid email format');
@@ -19,6 +15,10 @@ const validateUserRegistration = (req, res, next) => {
 
   if (!full_name || full_name.trim().length === 0) {
     errors.push('Full name is required');
+  }
+
+  if (!phone || phone.trim().length === 0) {
+    errors.push('Phone number is required');
   }
 
   if (errors.length > 0) {

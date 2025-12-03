@@ -4,7 +4,7 @@ const User = require('../models/User');
 // Register new user
 const register = async (req, res, next) => {
   try {
-    const { user_id, email, password, full_name, phone, role, org_id } = req.body;
+    const { email, password, full_name, phone, role, org_id } = req.body;
 
     // Validation
     if (!password || password.length < 6) {
@@ -15,18 +15,17 @@ const register = async (req, res, next) => {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { user_id }] });
+    const existingUser = await User.findOne({ email });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: 'Email or user_id already exists'
+        message: 'Email already exists'
       });
     }
 
-    // Create new user (password will be hashed by pre-save hook)
+    // Create new user (user_id and password will be auto-generated/hashed by pre-save hooks)
     const user = await User.create({
-      user_id,
       email,
       password,
       full_name,

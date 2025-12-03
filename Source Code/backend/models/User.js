@@ -5,9 +5,13 @@ const userSchema = new mongoose.Schema(
   {
     user_id: {
       type: String,
-      required: true,
       unique: true,
       trim: true,
+      default: function() {
+        const timestamp = Date.now().toString(36).toUpperCase();
+        const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+        return `USER_${timestamp}_${random}`;
+      }
     },
     email: {
       type: String,

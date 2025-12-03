@@ -10,12 +10,12 @@ router.use(verifyToken);
 router.get('/', isAdminOrManager, userController.getAllUsers);
 
 // Get user by ID
-router.get('/:id', userController.getUserById);
+router.get('/:user_id', userController.getUserById);
 
 // Create new user (admin/manager)
 router.post('/', isAdminOrManager, userController.createUser);
 
 // Delete user (admin only)
-router.delete('/:id', isAdmin, userController.deleteUser);
+router.delete('/:user_id', isAdmin, userController.deleteUser);
 
 module.exports = router;

@@ -99,6 +99,14 @@ const createUser = async (req, res, next) => {
       org_id
     });
 
+    // Emit real-time event
+    if (global.io) {
+      global.io.emit('user_created', {
+        success: true,
+        data: user
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: 'User created successfully',
@@ -141,6 +149,14 @@ const updateUser = async (req, res, next) => {
       });
     }
 
+    // Emit real-time event
+    if (global.io) {
+      global.io.emit('user_updated', {
+        success: true,
+        data: user
+      });
+    }
+
     res.json({
       success: true,
       message: 'User updated successfully'
@@ -175,6 +191,14 @@ const deleteUser = async (req, res, next) => {
     // Clean up related data
     await RFIDCard.deleteMany({ user_id });
     await BiometricData.deleteMany({ user_id });
+
+    // Emit real-time event
+    if (global.io) {
+      global.io.emit('user_deleted', {
+        success: true,
+        data: { user_id }
+      });
+    }
 
     res.json({
       success: true,
