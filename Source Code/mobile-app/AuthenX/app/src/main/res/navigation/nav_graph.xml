@@ -7,45 +7,65 @@
 
     <fragment
         android:id="@+id/homeFragment"
-        android:name="com.example.authenx.presentation.ui.HomeFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.home.HomeFragment"
         android:label="fragment_home"
         tools:layout="@layout/fragment_home" >
         <action
             android:id="@+id/action_homeFragment_to_faceAuthenFragment"
-            app:destination="@id/faceAuthenFragment" />
+            app:destination="@id/faceAuthenFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_homeFragment_to_scanFingerprintFragment"
-            app:destination="@id/scanFingerprintFragment" />
+            app:destination="@id/scanFingerprintFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_homeFragment_to_statisticFragment"
-            app:destination="@id/statisticFragment" />
+            app:destination="@id/statisticFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_homeFragment_to_userManagementFragment"
-            app:destination="@id/userManagementFragment" />
+            app:destination="@id/userManagementFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_homeFragment_to_firmwareUpdateFragment"
-            app:destination="@id/firmwareUpdateFragment" />
+            app:destination="@id/firmwareUpdateFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
     <fragment
         android:id="@+id/faceAuthenFragment"
-        android:name="com.example.authenx.presentation.ui.FaceAuthenFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.face_authen.FaceAuthenFragment"
         android:label="fragment_face_authen"
         tools:layout="@layout/fragment_face_authen" />
     <fragment
         android:id="@+id/scanFingerprintFragment"
-        android:name="com.example.authenx.presentation.ui.ScanFingerprintFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.fingerprint.ScanFingerprintFragment"
         android:label="fragment_scan_fingerprint"
         tools:layout="@layout/fragment_scan_fingerprint" />
     <fragment
         android:id="@+id/statisticFragment"
-        android:name="com.example.authenx.presentation.ui.StatisticFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.statistic.StatisticFragment"
         android:label="StatisticFragment" />
     <fragment
         android:id="@+id/userManagementFragment"
-        android:name="com.example.authenx.presentation.ui.UserManagementFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.user_management.UserManagementFragment"
         android:label="UserManagementFragment" />
     <fragment
         android:id="@+id/firmwareUpdateFragment"
-        android:name="com.example.authenx.presentation.ui.FirmwareUpdateFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.firmware_update.FirmwareUpdateFragment"
         android:label="FirmwareUpdateFragment" />
 </navigation>

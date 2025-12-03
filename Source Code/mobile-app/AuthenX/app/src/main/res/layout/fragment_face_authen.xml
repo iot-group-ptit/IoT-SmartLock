@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@color/transparent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    tools:context=".presentation.ui.FaceAuthenFragment">
+    tools:context=".presentation.ui.mainapp.face_authen.FaceAuthenFragment">
 
     <View
         android:id="@+id/overlayView"
