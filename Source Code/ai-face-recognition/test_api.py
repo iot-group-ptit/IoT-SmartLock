@@ -21,6 +21,24 @@ payload = {
 
 response = requests.post(url, json=payload)
 
-# ----- 3. In kết quả -----
+# ----- 3. Check action-----
 print("Kết quả API:")
-print(response.text)
+result = response.json()
+print(result)
+if result.get("verified") == True:
+
+    initial_x = result.get("initial_x")
+    url_action = "http://localhost:8000/check-action"
+    left_path = r"C:\HK7\IOT\smart_lock_door\left.jpg"
+    b64_image_left = image_to_base64(left_path)
+
+    payload_action = {
+        "initial_x": initial_x,
+        "direction": "left",
+        "image_base64" : b64_image_left
+    }
+    response_action = requests.post(url_action, json=payload_action)
+    result_action = response_action.json()
+    print("Kết quả check action:")
+    print(result_action)
+
