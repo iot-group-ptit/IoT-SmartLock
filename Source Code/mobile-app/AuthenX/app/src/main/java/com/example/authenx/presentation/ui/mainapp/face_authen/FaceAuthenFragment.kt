@@ -1,4 +1,4 @@
-package com.example.authenx.presentation.ui
+package com.example.authenx.presentation.ui.mainapp.face_authen
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -15,7 +15,9 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.authenx.databinding.FragmentFaceAuthenBinding
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class FaceAuthenFragment : Fragment() {
 
     private var _binding: FragmentFaceAuthenBinding? = null
@@ -60,7 +62,7 @@ class FaceAuthenFragment : Fragment() {
     }
 
     private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        val cameraProviderFuture = ProcessCameraProvider.Companion.getInstance(requireContext())
 
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()

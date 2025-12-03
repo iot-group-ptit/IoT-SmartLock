@@ -1,16 +1,17 @@
-package com.example.authenx.presentation.ui
+package com.example.authenx.presentation.ui.mainapp.firmware_update
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import com.example.authenx.R
 import com.example.authenx.databinding.FragmentFirmwareUpdateBinding
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class FirmwareUpdateFragment : Fragment() {
-    
+
     private var _binding: FragmentFirmwareUpdateBinding? = null
     private val binding get() = _binding!!
 

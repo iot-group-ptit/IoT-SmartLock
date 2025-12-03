@@ -1,0 +1,34 @@
+package com.example.authenx.data.remote.source
+
+import com.example.authenx.BuildConfig
+import com.example.authenx.data.remote.ApiService
+import com.example.authenx.domain.model.ApiResponse
+import com.example.authenx.domain.model.User
+import com.example.authenx.domain.model.UsersResponse
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import javax.inject.Inject
+
+class UserDataSource @Inject constructor (private val httpClient: HttpClient) {
+
+    suspend fun getAllUsers(token: String): UsersResponse {
+        return httpClient.get("${ApiService.Companion.BASE_URL}/users") {
+            bearerAuth(token)
+        }.body()
+    }
+
+    suspend fun getUserById(token: String, userId: String): ApiResponse<User> {
+        return httpClient.get("${ApiService.Companion.BASE_URL}/users/$userId") {
+            bearerAuth(token)
+        }.body()
+    }
+
+    suspend fun deleteUser(token: String, userId: String): ApiResponse<Unit> {
+        return httpClient.delete("${ApiService.Companion.BASE_URL}/users/$userId") {
+            bearerAuth(token)
+        }.body()
+    }
+}
