@@ -1,5 +1,36 @@
 const AccessLog = require('../models/AccessLog');
 
+// Create a new access log (for testing or device integration)
+const createAccessLog = async (req, res, next) => {
+  try {
+    const { user_id, access_method, result, device_id } = req.body;
+
+    const log = await AccessLog.create({
+      user_id,
+      access_method,
+      result,
+      device_id,
+      time: new Date()
+    });
+
+    // Emit real-time event to all connected clients
+    if (global.io) {
+      global.io.emit('access_log_created', {
+        success: true,
+        data: log
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Access log created successfully',
+      data: log
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get all access logs
 const getAccessLogs = async (req, res, next) => {
   try {
@@ -27,12 +58,46 @@ const getAccessLogs = async (req, res, next) => {
       if (end_date) filter.time.$lte = new Date(end_date);
     }
 
-    const logs = await AccessLog.find(filter)
-      .populate('user_id', 'user_id full_name')
-      .sort({ time: -1 })
-      .skip(offset)
-      .limit(parseInt(limit))
-      .lean();
+    // Use aggregation instead of populate to avoid ObjectId casting issues
+    const logs = await AccessLog.aggregate([
+      { $match: filter },
+      { $lookup: {
+          from: 'users',
+          let: { userId: '$user_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$user_id', '$$userId'] } } }
+          ],
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $lookup: {
+          from: 'devices',
+          let: { deviceId: '$device_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$device_id', '$$deviceId'] } } }
+          ],
+          as: 'device'
+        }
+      },
+      { $unwind: { path: '$device', preserveNullAndEmptyArrays: true } },
+      { $project: {
+          _id: 1,
+          log_id: 1,
+          access_method: 1,
+          result: 1,
+          time: 1,
+          user_id: { user_id: '$user.user_id', full_name: '$user.full_name' },
+          device_id: { device_id: '$device.device_id', device_name: '$device.device_name' },
+          additional_info: 1,
+          createdAt: 1,
+          updatedAt: 1
+        }
+      },
+      { $sort: { time: -1 } },
+      { $skip: offset },
+      { $limit: parseInt(limit) }
+    ]);
 
     const total = await AccessLog.countDocuments(filter);
 
@@ -95,20 +160,46 @@ const getAccessStatistics = async (req, res, next) => {
     const topUsers = await AccessLog.aggregate([
       { $match: matchFilter },
       { $group: { _id: '$user_id', access_count: { $sum: 1 } } },
-      { $lookup: { from: 'users', localField: '_id', foreignField: 'user_id', as: 'user' } },
-      { $unwind: '$user' },
+      { $lookup: { 
+          from: 'users', 
+          let: { userId: '$_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$user_id', '$$userId'] } } }
+          ],
+          as: 'user' 
+        } 
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
       { $project: { user_id: '$user.user_id', full_name: '$user.full_name', access_count: 1, _id: 0 } },
       { $sort: { access_count: -1 } },
       { $limit: 10 }
     ]);
 
-    // Recent failed attempts
-    const failedFilter = { ...matchFilter, result: { $in: ['failed', 'denied'] } };
-    const failedAttempts = await AccessLog.find(failedFilter)
-      .populate('user_id', 'full_name')
-      .sort({ time: -1 })
-      .limit(20)
-      .lean();
+    // Recent access logs (all attempts)
+    const recentAccess = await AccessLog.aggregate([
+      { $match: matchFilter },
+      { $lookup: { 
+          from: 'users', 
+          let: { userId: '$user_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$user_id', '$$userId'] } } }
+          ],
+          as: 'user' 
+        } 
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $project: { 
+          _id: 1,
+          user_id: { user_id: '$user.user_id', full_name: '$user.full_name' },
+          access_method: 1,
+          result: 1,
+          device_id: 1,
+          time: 1
+        } 
+      },
+      { $sort: { time: -1 } },
+      { $limit: 20 }
+    ]);
 
     res.json({
       success: true,
@@ -117,7 +208,7 @@ const getAccessStatistics = async (req, res, next) => {
         byResult,
         dailyAccess,
         topUsers,
-        failedAttempts
+        recentAccess
       }
     });
   } catch (error) {
@@ -168,10 +259,30 @@ const exportAccessLogs = async (req, res, next) => {
       if (end_date) filter.createdAt.$lte = new Date(end_date);
     }
 
-    const logs = await AccessLog.find(filter)
-      .populate('user_id', 'user_id full_name')
-      .sort({ createdAt: -1 })
-      .lean();
+    // Use aggregation instead of populate
+    const logs = await AccessLog.aggregate([
+      { $match: filter },
+      { $lookup: {
+          from: 'users',
+          let: { userId: '$user_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$user_id', '$$userId'] } } }
+          ],
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $project: {
+          _id: 1,
+          user_id: '$user',
+          access_method: 1,
+          result: 1,
+          device_id: 1,
+          createdAt: 1
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]);
 
     if (format === 'csv') {
       // Convert to CSV format
@@ -202,6 +313,7 @@ const exportAccessLogs = async (req, res, next) => {
 };
 
 module.exports = {
+  createAccessLog,
   getAccessLogs,
   getAccessStatistics,
   getUserAccessHistory,

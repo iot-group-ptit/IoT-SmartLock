@@ -6,6 +6,9 @@ const { verifyToken, isAdminOrManager } = require('../middleware/auth');
 // All routes require authentication
 router.use(verifyToken);
 
+// Create access log (for testing/device integration)
+router.post('/', logController.createAccessLog);
+
 // Get all access logs (admin/manager)
 router.get('/', isAdminOrManager, logController.getAccessLogs);
 
