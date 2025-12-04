@@ -45,6 +45,9 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_homeFragment_to_auth_graph"
+            app:destination="@id/auth_graph" />
     </fragment>
     <fragment
         android:id="@+id/faceAuthenFragment"
@@ -68,4 +71,5 @@
         android:id="@+id/firmwareUpdateFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.firmware_update.FirmwareUpdateFragment"
         android:label="FirmwareUpdateFragment" />
+    <include app:graph="@navigation/auth_graph" />
 </navigation>

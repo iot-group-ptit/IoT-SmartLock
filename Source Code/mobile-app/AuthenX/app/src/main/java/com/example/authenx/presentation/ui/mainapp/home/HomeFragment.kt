@@ -38,9 +38,6 @@ class HomeFragment : Fragment() {
             btnRegisterFace.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_faceAuthenFragment)
             }
-            btnScanFingerprint.setOnClickListener {
-                findNavController().navigate(R.id.action_homeFragment_to_scanFingerprintFragment)
-            }
             btnRegisterFingerPrint.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_scanFingerprintFragment)
             }
@@ -53,7 +50,20 @@ class HomeFragment : Fragment() {
             btnUpdate.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_firmwareUpdateFragment)
             }
+            btnLogout.setOnClickListener {
+                logout()
+            }
         }
+    }
+
+    private fun logout() {
+        val sharedPref = requireActivity().getSharedPreferences("auth_prefs", android.content.Context.MODE_PRIVATE)
+        sharedPref.edit().apply {
+            remove("auth_token")
+            remove("user_id")
+            apply()
+        }
+        findNavController().navigate(R.id.action_homeFragment_to_auth_graph)
     }
 
     override fun onDestroyView() {

@@ -51,4 +51,5 @@
     <string name="device_information">Device information</string>
     <string name="device_smart_key_authenx">Device: Smart key AuthenX</string>
     <string name="new_available_version">New available version</string>
+    <string name="log_out">Logout</string>
 </resources>
