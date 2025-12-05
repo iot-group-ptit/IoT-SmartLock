@@ -111,7 +111,7 @@
             app:layout_constraintTop_toBottomOf="@id/btnManageUsers"
             android:text="@string/create_organization"
             android:layout_marginTop="24dp"
-            android:backgroundTint="@color/primary_color"
+            android:backgroundTint="@color/secondary_color"
             app:layout_constraintStart_toStartOf="@id/btnRegisterFace"
             app:layout_constraintEnd_toEndOf="@id/btnRegisterFace"
             android:visibility="gone"/>

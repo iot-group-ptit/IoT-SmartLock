@@ -2,6 +2,7 @@ package com.example.authenx.presentation.ui.mainapp.user_management
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.authenx.data.local.AuthManager
 import com.example.authenx.domain.model.User
 import com.example.authenx.domain.usecase.DeleteUserUseCase
 import com.example.authenx.domain.usecase.GetAllUsersUseCase
@@ -16,7 +17,8 @@ data class UserManagementUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val searchQuery: String = "",
-    val filterType: FilterType = FilterType.ALL
+    val filterType: FilterType = FilterType.ALL,
+    val currentUserRole: String = ""
 )
 
 enum class FilterType {
@@ -26,13 +28,16 @@ enum class FilterType {
 @HiltViewModel
 class UserManagementViewModel @Inject constructor(
     private val getAllUsersUseCase: GetAllUsersUseCase,
-    private val deleteUserUseCase: DeleteUserUseCase
+    private val deleteUserUseCase: DeleteUserUseCase,
+    private val authManager: AuthManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserManagementUiState(isLoading = true))
     val uiState: StateFlow<UserManagementUiState> = _uiState.asStateFlow()
 
     init {
+        val currentRole = authManager.getUserRole() ?: ""
+        _uiState.update { it.copy(currentUserRole = currentRole) }
         observeUsers()
     }
 
@@ -49,10 +54,11 @@ class UserManagementViewModel @Inject constructor(
                 }
                 .collect { users ->
                     _uiState.update { currentState ->
+                        val filteredByRole = filterUsersByRole(users, currentState.currentUserRole)
                         currentState.copy(
-                            users = users,
+                            users = filteredByRole,
                             filteredUsers = filterUsers(
-                                users,
+                                filteredByRole,
                                 currentState.searchQuery,
                                 currentState.filterType
                             ),
@@ -61,6 +67,18 @@ class UserManagementViewModel @Inject constructor(
                         )
                     }
                 }
+        }
+    }
+    
+    private fun filterUsersByRole(users: List<User>, currentRole: String): List<User> {
+        return when (currentRole) {
+            "admin" -> {
+                users.filter { it.role == "user_manager" }
+            }
+            "user_manager" -> {
+                users.filter { it.role == "user" }
+            }
+            else -> emptyList()
         }
     }
 

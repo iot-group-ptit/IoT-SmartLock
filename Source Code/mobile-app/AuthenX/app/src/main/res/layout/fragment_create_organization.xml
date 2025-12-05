@@ -55,8 +55,8 @@
             android:layout_height="wrap_content"
             android:text="@string/create_organization_description"
             android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:fontFamily="@font/montserrat_regular"
+            android:textColor="@color/primary_color"
+            android:fontFamily="@font/montserrat_semibold"
             android:layout_marginBottom="24dp"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -82,10 +82,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="text"
-                android:fontFamily="@font/montserrat_regular" />
+                android:fontFamily="@font/montserrat_semibold" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Address Input -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilAddress"
             android:layout_width="0dp"
@@ -105,7 +104,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textPostalAddress"
-                android:fontFamily="@font/montserrat_regular" />
+                android:fontFamily="@font/montserrat_semibold" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Create Button -->

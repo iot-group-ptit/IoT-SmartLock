@@ -27,8 +27,8 @@ class UserRepositoryImpl @Inject constructor(
     
         try {
             val response = userDataSource.getAllUsers(token)
-            if (response.success && response.data?.users != null) {
-                emit(response.data.users)
+            if (response.code == 200) {
+                emit(response.users)
             }
         } catch (e: Exception) {
             // Ignore initial error
@@ -37,8 +37,8 @@ class UserRepositoryImpl @Inject constructor(
         socketManager.onUserChanged().collect {
             try {
                 val response = userDataSource.getAllUsers(token)
-                if (response.success && response.data?.users != null) {
-                    emit(response.data.users)
+                if (response.code == 200) {
+                    emit(response.users)
                 }
             } catch (e: Exception) {
                 // Keep existing data

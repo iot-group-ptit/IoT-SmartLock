@@ -40,12 +40,28 @@ class UserAdapter(
         fun bind(user: User) {
             binding.apply {
                 tvUserName.text = user.fullName
-                tvUserId.text = user.email
+                tvUserId.text = if (user.email.isNotEmpty()) user.email else user.phone
                 
-                val roleText = user.role.replaceFirstChar { 
-                    if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
+                val roleText = when (user.role) {
+                    "user_manager" -> "Manager"
+                    "admin" -> "Admin"
+                    "user" -> "User"
+                    else -> user.role.replaceFirstChar { 
+                        if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
+                    }
                 }
-                // tvUserRole.text = roleText
+                tvUserRole.text = roleText
+                
+                tvUserRole.setBackgroundResource(
+                    when (user.role) {
+                        "admin" -> R.color.primary_color
+                        "user_manager" -> R.color.secondary_color
+                        else -> android.R.color.darker_gray
+                    }
+                )
+                tvUserRole.setTextColor(
+                    root.context.getColor(R.color.white)
+                )
                 
                 // tvCreatedAt.text = "Joined: ${dateFormat.format(user.createdAt)}"
                 

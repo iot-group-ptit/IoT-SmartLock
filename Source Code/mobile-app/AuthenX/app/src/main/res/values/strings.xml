@@ -59,6 +59,9 @@
     <string name="add_manager">Add Manager</string>
     <string name="add_user">Add User</string>
     <string name="total_users">Total: %d users</string>
+    <string name="viewing_managers">Viewing user_managers only (Admin view)</string>
+    <string name="viewing_users">Viewing regular users only (Manager view)</string>
+    <string name="no_users_found">No users found</string>
     
     <!-- Create User -->
     <string name="create_new_user">Create New User</string>

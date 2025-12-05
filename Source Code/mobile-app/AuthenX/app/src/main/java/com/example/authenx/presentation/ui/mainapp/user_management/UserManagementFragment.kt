@@ -59,16 +59,21 @@ class UserManagementFragment : Fragment() {
                 binding.fabAddManager.visibility = View.VISIBLE
                 binding.fabAddUser.visibility = View.GONE
                 binding.tvTitle.text = getString(R.string.manage_user_managers)
+                binding.tvRoleDescription.text = getString(R.string.viewing_managers)
+                binding.tvRoleDescription.visibility = View.VISIBLE
             }
             "user_manager" -> {
                 binding.fabAddUser.visibility = View.VISIBLE
                 binding.fabAddManager.visibility = View.GONE
                 binding.tvTitle.text = getString(R.string.manage_users)
+                binding.tvRoleDescription.text = getString(R.string.viewing_users)
+                binding.tvRoleDescription.visibility = View.VISIBLE
             }
             else -> {
                 binding.fabAddManager.visibility = View.GONE
                 binding.fabAddUser.visibility = View.GONE
                 binding.tvTitle.text = getString(R.string.user_management)
+                binding.tvRoleDescription.visibility = View.GONE
             }
         }
     }

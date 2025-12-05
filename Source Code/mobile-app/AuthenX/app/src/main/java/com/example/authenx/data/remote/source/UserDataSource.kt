@@ -21,7 +21,7 @@ import javax.inject.Inject
 class UserDataSource @Inject constructor (private val httpClient: HttpClient) {
 
     suspend fun getAllUsers(token: String): UsersResponse {
-        return httpClient.get("${ApiService.Companion.BASE_URL}/users") {
+        return httpClient.get("${ApiService.Companion.BASE_URL}/user/all") {
             bearerAuth(token)
         }.body()
     }

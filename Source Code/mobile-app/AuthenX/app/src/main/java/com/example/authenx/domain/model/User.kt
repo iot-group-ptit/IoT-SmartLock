@@ -7,7 +7,6 @@ data class User(
     @SerializedName("user_id")
     val id: String = "",
     val email: String = "",
-    @SerializedName("full_name")
     val fullName: String = "",
     val phone: String = "",
     val role: String = "",

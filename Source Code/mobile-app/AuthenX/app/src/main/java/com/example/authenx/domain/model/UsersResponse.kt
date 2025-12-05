@@ -1,18 +1,11 @@
 package com.example.authenx.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class UsersResponse(
-    val success: Boolean,
-    val message: String? = null,
-    val data: UsersData? = null
-)
-
-data class UsersData(
-    val users: List<User>,
-    val pagination: Pagination
-)
-
-data class Pagination(
-    val page: Int,
-    val limit: Int,
-    val total: Int
+    val code: Int,
+    val message: String,
+    val count: Int,
+    val users: List<User>
 )
