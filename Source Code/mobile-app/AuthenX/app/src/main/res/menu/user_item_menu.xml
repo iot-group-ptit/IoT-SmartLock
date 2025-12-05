@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
+        android:id="@+id/action_enroll_biometric"
+        android:title="@string/enroll_fingerprint"
+        android:icon="@drawable/fingerprint_24px" />
+    
+    <item
         android:id="@+id/action_edit"
-        android:title="Edit"
+        android:title="@string/edit"
         android:icon="@drawable/edit_24px" />
     
     <item
         android:id="@+id/action_delete"
-        android:title="Delete"
+        android:title="@string/delete"
         android:icon="@drawable/delete_24px" />
 </menu>

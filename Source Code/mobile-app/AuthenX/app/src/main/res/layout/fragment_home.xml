@@ -2,7 +2,7 @@
 <ScrollView
     android:layout_height="match_parent"
     android:layout_width="match_parent"
-    android:background="@color/transparent"
+    android:background="@color/white"
     xmlns:android="http://schemas.android.com/apk/res/android">
     <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools"
@@ -63,26 +63,12 @@
             app:layout_constraintEnd_toEndOf="@id/btnScanFace"/>
 
         <Button
-            android:id="@+id/btnRegisterFingerPrint"
-            android:layout_width="196dp"
-            android:layout_height="wrap_content"
-            android:padding="16dp"
-            android:textSize="18sp"
-            android:fontFamily="@font/montserrat_semibold"
-            app:layout_constraintTop_toBottomOf="@id/btnRegisterFace"
-            android:text="@string/register_fingerprint"
-            android:layout_marginTop="24dp"
-            android:backgroundTint="@color/secondary_color"
-            app:layout_constraintStart_toStartOf="@id/btnRegisterFace"
-            app:layout_constraintEnd_toEndOf="@id/btnRegisterFace"/>
-
-        <Button
             android:id="@+id/btnStatistic"
             android:layout_width="196dp"
             android:layout_height="wrap_content"
             android:padding="16dp"
             android:textSize="18sp"
-            app:layout_constraintTop_toBottomOf="@id/btnRegisterFingerPrint"
+            app:layout_constraintTop_toBottomOf="@id/btnRegisterFace"
             android:text="@string/go_to_statistics"
             android:layout_marginTop="24dp"
             android:backgroundTint="@color/secondary_color"

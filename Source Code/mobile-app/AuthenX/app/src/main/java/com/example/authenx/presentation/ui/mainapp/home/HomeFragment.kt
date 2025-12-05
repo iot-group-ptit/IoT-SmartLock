@@ -49,9 +49,6 @@ class HomeFragment : Fragment() {
     
     private fun setupAdminUI() {
         // Admin can see everything
-        binding.btnScanFace.visibility = View.VISIBLE
-        binding.btnRegisterFace.visibility = View.VISIBLE
-        binding.btnRegisterFingerPrint.visibility = View.VISIBLE
         binding.btnStatistic.visibility = View.VISIBLE
         binding.btnManageUsers.visibility = View.VISIBLE
         binding.btnCreateOrganization.visibility = View.VISIBLE
@@ -62,7 +59,6 @@ class HomeFragment : Fragment() {
         // user_manager can manage users, view statistics, enroll biometrics
         binding.btnScanFace.visibility = View.VISIBLE
         binding.btnRegisterFace.visibility = View.VISIBLE
-        binding.btnRegisterFingerPrint.visibility = View.VISIBLE
         binding.btnStatistic.visibility = View.VISIBLE
         binding.btnManageUsers.visibility = View.VISIBLE
         binding.btnCreateOrganization.visibility = View.GONE // Admin only
@@ -73,7 +69,6 @@ class HomeFragment : Fragment() {
         // Default user - minimal access
         binding.btnScanFace.visibility = View.VISIBLE
         binding.btnRegisterFace.visibility = View.GONE
-        binding.btnRegisterFingerPrint.visibility = View.GONE
         binding.btnStatistic.visibility = View.GONE
         binding.btnManageUsers.visibility = View.GONE
         binding.btnCreateOrganization.visibility = View.GONE
@@ -87,9 +82,6 @@ class HomeFragment : Fragment() {
             }
             btnRegisterFace.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_faceAuthenFragment)
-            }
-            btnRegisterFingerPrint.setOnClickListener {
-                findNavController().navigate(R.id.action_homeFragment_to_scanFingerprintFragment)
             }
             btnStatistic.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_statisticFragment)

@@ -50,13 +50,6 @@
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
         <action
-            android:id="@+id/action_homeFragment_to_scanFingerprintFragment"
-            app:destination="@id/scanFingerprintFragment"
-            app:enterAnim="@anim/slide_in_right"
-            app:exitAnim="@anim/slide_out_left"
-            app:popEnterAnim="@anim/slide_in_left"
-            app:popExitAnim="@anim/slide_out_right" />
-        <action
             android:id="@+id/action_homeFragment_to_statisticFragment"
             app:destination="@id/statisticFragment"
             app:enterAnim="@anim/slide_in_right"
@@ -98,11 +91,6 @@
         android:label="fragment_face_authen"
         tools:layout="@layout/fragment_face_authen" />
     <fragment
-        android:id="@+id/scanFingerprintFragment"
-        android:name="com.example.authenx.presentation.ui.mainapp.fingerprint.ScanFingerprintFragment"
-        android:label="fragment_scan_fingerprint"
-        tools:layout="@layout/fragment_scan_fingerprint" />
-    <fragment
         android:id="@+id/statisticFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.statistic.StatisticFragment"
         android:label="StatisticFragment" />
@@ -120,6 +108,13 @@
         <action
             android:id="@+id/action_userManagementFragment_to_createUserFragment"
             app:destination="@id/createUserFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_userManagementFragment_to_enrollBiometricFragment"
+            app:destination="@id/enrollBiometricFragment"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"

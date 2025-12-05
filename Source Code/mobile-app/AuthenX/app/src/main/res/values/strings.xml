@@ -95,4 +95,7 @@
     <string name="address">Address (Optional)</string>
     <string name="create_organization_success">Organization %s created successfully!</string>
     <string name="manage_organizations">Manage Organizations</string>
+    <string name="place_fingerprint_on_the_sensor">Place fingerprint on the sensor</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
 </resources>

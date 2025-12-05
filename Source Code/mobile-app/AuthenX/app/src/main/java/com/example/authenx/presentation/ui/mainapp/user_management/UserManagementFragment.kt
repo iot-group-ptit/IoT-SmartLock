@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.os.bundleOf
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -83,6 +84,16 @@ class UserManagementFragment : Fragment() {
             onUserClick = { user ->
                 Toast.makeText(requireContext(), "User: ${user.fullName}", Toast.LENGTH_SHORT).show()
             },
+            onEnrollBiometricClick = { user ->
+                val bundle = bundleOf(
+                    "userId" to user.id,
+                    "userName" to user.fullName
+                )
+                findNavController().navigate(
+                    R.id.action_userManagementFragment_to_enrollBiometricFragment,
+                    bundle
+                )
+            },
             onEditClick = { user ->
                 Toast.makeText(requireContext(), "Edit: ${user.fullName}", Toast.LENGTH_SHORT).show()
             },
@@ -116,17 +127,6 @@ class UserManagementFragment : Fragment() {
         // Search functionality
         binding.etSearch.addTextChangedListener { text ->
             viewModel.searchUsers(text?.toString() ?: "")
-        }
-        
-        // Filter chips
-        binding.chipGroupFilter.setOnCheckedStateChangeListener { _, checkedIds ->
-            val filterType = when (checkedIds.firstOrNull()) {
-                R.id.chipFingerprint -> FilterType.FINGERPRINT
-                R.id.chipFace -> FilterType.FACE
-                R.id.chipRfid -> FilterType.RFID
-                else -> FilterType.ALL
-            }
-            viewModel.setFilter(filterType)
         }
     }
     
