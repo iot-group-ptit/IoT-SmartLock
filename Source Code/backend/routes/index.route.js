@@ -1,0 +1,20 @@
+const LogRoutes = require("./log.route");
+const UserRoutes = require("./user.route");
+const RfidRoutes = require("./rfid.route");
+const FingerprintRoutes = require("./fingerprint.route");
+const DeviceRoutes = require("./device.route");
+const OrganizationRoutes = require("./organization.route");
+
+module.exports = (app) => {
+  app.use("/log", LogRoutes);
+
+  app.use("/user", UserRoutes);
+
+  app.use("/rfid", RfidRoutes);
+
+  app.use("/fingerprint", FingerprintRoutes);
+
+  app.use("/device", DeviceRoutes);
+
+  app.use("/organization", OrganizationRoutes);
+};

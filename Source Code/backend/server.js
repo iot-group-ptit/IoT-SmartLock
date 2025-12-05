@@ -3,25 +3,15 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
+const bodyParser = require("body-parser");
 const helmet = require("helmet");
 const morgan = require("morgan");
 
 const database = require("./config/database");
 const mqttClient = require("./config/mqtt");
-const { errorHandler, notFound } = require("./middleware/errorHandler");
-const { apiLimiter } = require("./middleware/rateLimiter");
+const route = require("./routes/index.route");
 
-// Routes
-const routes = {
-  auth: require("./routes/authRoutes"),
-  users: require("./routes/userRoutes"),
-  access: require("./routes/accessRoutes"),
-  biometric: require("./routes/biometricRoutes"),
-  logs: require("./routes/logRoutes"),
-  devices: require("./routes/deviceRoutes"),
-  sensors: require("./routes/sensorRoutes"),
-  control: require("./routes/commandRoutes"),
-};
+database.connect();
 
 const app = express();
 const server = http.createServer(app);
@@ -44,7 +34,10 @@ app.use(
 app.use(morgan("combined"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/api/", apiLimiter);
+
+app.use(bodyParser.json());
+
+app.use(bodyParser.urlencoded({ extended: false }));
 
 // Health check
 app.get("/health", (req, res) =>
@@ -56,12 +49,7 @@ app.get("/health", (req, res) =>
   })
 );
 
-// Register routes
-Object.entries(routes).forEach(([key, route]) => app.use(`/api/${key}`, route));
-
-// 404 + error handler
-app.use(notFound);
-app.use(errorHandler);
+route(app);
 
 // Socket.IO connection
 io.on("connection", (socket) => {
@@ -87,8 +75,6 @@ function setupMqttSubscriptions() {
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
-    await database.connect();
-
     // Kết nối MQTT với callback
     mqttClient.connect(() => {
       // Chỉ setup subscriptions sau khi MQTT đã kết nối
