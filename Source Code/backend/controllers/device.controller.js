@@ -37,13 +37,24 @@ module.exports.registerDevice = async (req, res) => {
           existing.provisioning_token_expires = newExpires;
           await existing.save();
 
-          // ✅ SỬA: Gửi token mới xuống ESP32
-          mqttClient.publish(mqttClient.topics.DEVICE_PROVISION_TOKEN, {
+          //   // ✅ SỬA: Gửi token mới xuống ESP32
+          //   mqttClient.publish(mqttClient.topics.DEVICE_PROVISION_TOKEN, {
+          //     device_id,
+          //     provisioning_token: newToken,
+          //     expires_at: newExpires.toISOString(),
+          //   });
+          //   console.log("✓ Đã gửi token MỚI xuống ESP32 (token cũ hết hạn)");
+
+          // ✅ SỬA: GỬI TOKEN LÊN TOPIC RIÊNG CỦA DEVICE
+          const deviceTopic = `smartlock/device/${device_id}/provision/token`;
+          mqttClient.publish(deviceTopic, {
             device_id,
             provisioning_token: newToken,
             expires_at: newExpires.toISOString(),
           });
-          console.log("✓ Đã gửi token MỚI xuống ESP32 (token cũ hết hạn)");
+          console.log(
+            `✓ Đã gửi token MỚI xuống ESP32 qua topic: ${deviceTopic}`
+          );
 
           return res.json({
             success: true,
@@ -80,33 +91,48 @@ module.exports.registerDevice = async (req, res) => {
     console.log("✓ Device đã tạo:", device_id);
     console.log("✓ Provisioning token:", provisioningToken);
 
-    // ✅ SỬA: GỬI TOKEN XUỐNG ESP32 QUA MQTT
-    mqttClient.publish(mqttClient.topics.DEVICE_PROVISION_TOKEN, {
+    // ✅ BƯỚC 1: GỬI CA CERTIFICATE TRƯỚC
+    const certificateService = require("../services/certificate.service");
+    const caCertPem = certificateService.getCACertificate();
+
+    const caCertTopic = `smartlock/device/${device_id}/ca_certificate`;
+    mqttClient.publish(caCertTopic, {
+      device_id,
+      ca_certificate: caCertPem,
+      timestamp: new Date().toISOString(),
+    });
+    console.log(`✓ Đã gửi CA Certificate cho device: ${device_id}`);
+
+    // Delay nhỏ để ESP32 xử lý CA cert
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // // ✅ SỬA: GỬI TOKEN XUỐNG ESP32 QUA MQTT
+    // mqttClient.publish(mqttClient.topics.DEVICE_PROVISION_TOKEN, {
+    //   device_id,
+    //   provisioning_token: provisioningToken,
+    //   expires_at: tokenExpires.toISOString(),
+    // });
+    // console.log("✓ Đã gửi token xuống ESP32");
+
+    // ✅ SỬA: GỬI TOKEN LÊN TOPIC RIÊNG CỦA DEVICE
+    const deviceTopic = `smartlock/device/${device_id}/provision/token`;
+    mqttClient.publish(deviceTopic, {
       device_id,
       provisioning_token: provisioningToken,
       expires_at: tokenExpires.toISOString(),
     });
-    console.log("✓ Đã gửi token xuống ESP32");
+    console.log(`✓ Đã gửi token xuống ESP32 qua topic: ${deviceTopic}`);
 
     // ✅ Log action
-    try {
-      await AccessLog.create({
-        access_method: "device_provision_init",
-        result: "success",
-        device_id: device_id,
-        additional_info: "Admin created device and issued provisioning token",
-      });
-      console.log("✓ Đã log vào AccessLog");
-    } catch (logError) {
-      console.error(
-        "⚠️ Không thể ghi log (không ảnh hưởng chức năng chính):",
-        logError.message
-      );
-    }
-
+    await AccessLog.create({
+      access_method: "device_provision_init",
+      result: "success",
+      device_id: device_id,
+      additional_info: "Admin created device and issued provisioning token",
+    });
     res.json({
       success: true,
-      message: "Device đã được tạo và token đã gửi xuống ESP32",
+      message: "Device đã được tạo, CA cert và token đã gửi xuống ESP32",
       device_id,
       status: "pending",
       token_expires: tokenExpires,
@@ -114,18 +140,18 @@ module.exports.registerDevice = async (req, res) => {
   } catch (error) {
     console.error("❌ Lỗi tạo device:", error);
 
-    try {
-      if (req.body.device_id) {
-        await AccessLog.create({
-          access_method: "device_provision_init",
-          result: "failed",
-          device_id: req.body.device_id,
-          additional_info: `Error: ${error.message}`,
-        });
-      }
-    } catch (logError) {
-      console.error("⚠️ Không thể ghi error log:", logError.message);
-    }
+    // try {
+    //   if (req.body.device_id) {
+    //     await AccessLog.create({
+    //       access_method: "device_provision_init",
+    //       result: "failed",
+    //       device_id: req.body.device_id,
+    //       additional_info: `Error: ${error.message}`,
+    //     });
+    //   }
+    // } catch (logError) {
+    //   console.error("⚠️ Không thể ghi error log:", logError.message);
+    // }
 
     if (!res.headersSent) {
       res.status(500).json({
@@ -137,37 +163,27 @@ module.exports.registerDevice = async (req, res) => {
   }
 };
 
-// // ✅ THÊM: API để kiểm tra trạng thái device
-// module.exports.getDeviceStatus = async (req, res) => {
-//   try {
-//     const { device_id } = req.params;
+// ============================================
+// THÊM API ĐỂ LẤY CA CERTIFICATE (TÙY CHỌN)
+// ============================================
 
-//     const device = await Device.findOne({ device_id });
+// File: device.controller.js
 
-//     if (!device) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Device không tồn tại",
-//       });
-//     }
+module.exports.getCACertificate = async (req, res) => {
+  try {
+    const certificateService = require("../services/certificate.service");
+    const caCertPem = certificateService.getCACertificate();
 
-//     res.json({
-//       success: true,
-//       device: {
-//         device_id: device.device_id,
-//         status: device.status,
-//         type: device.type,
-//         model: device.model,
-//         last_seen: device.last_seen,
-//         has_certificate: !!device.certificate,
-//         created_at: device.createdAt,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("❌ Lỗi get device status:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// };
+    res.json({
+      success: true,
+      ca_certificate: caCertPem,
+    });
+  } catch (error) {
+    console.error("Lỗi lấy CA certificate:", error);
+    res.status(500).json({
+      success: false,
+      message: "Không thể lấy CA certificate",
+      error: error.message,
+    });
+  }
+};

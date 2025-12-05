@@ -5,6 +5,7 @@ const Fingerprint = require("../models/fingerprint.model");
 const User = require("../models/user.model");
 const Device = require("../models/device.model");
 const securityAlertService = require("../services/securityAlert.service");
+const certificateService = require("../services/certificate.service");
 const crypto = require("crypto");
 
 class MQTTService {
@@ -115,6 +116,7 @@ class MQTTService {
       //   this.topics.AUTH_REQUEST,
       this.topics.DEVICE_PROVISION_REQUEST,
       this.topics.DEVICE_FINALIZE_REQUEST,
+      "smartlock/device/+/request_ca_cert",
     ];
 
     topicsToSubscribe.forEach((topic) => {
@@ -867,10 +869,15 @@ class MQTTService {
       console.log("✓ Chữ ký hợp lệ!");
 
       // Tạo certificate
-      const certificate = this.generateCertificate(
+      //   const certificate = this.generateCertificate(
+      //     device_id,
+      //     device.public_key
+      //   );
+      const result = await certificateService.issueDeviceCertificate(
         device_id,
         device.public_key
       );
+      const certificate = result.certificate;
 
       // Cập nhật device
       device.certificate = certificate;
@@ -942,12 +949,53 @@ ${Buffer.from(certString).toString("base64")}
 -----END CERTIFICATE-----`;
   }
 
+  // ✅ Handler gửi CA Certificate
+  async handleRequestCACertificate(data) {
+    console.log("📤 ESP32 yêu cầu CA Certificate...");
+    const { device_id } = data;
+
+    if (!device_id) {
+      console.log("✗ Thiếu device_id");
+      return;
+    }
+
+    try {
+      const certificateService = require("../services/certificate.service");
+
+      // Lấy CA certificate
+      const caCertPem = certificateService.getCACertificate();
+
+      // Gửi CA cert xuống ESP32
+      const topic = `smartlock/device/${device_id}/ca_certificate`;
+      this.publish(topic, {
+        device_id,
+        ca_certificate: caCertPem,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`✓ Đã gửi CA Certificate cho device: ${device_id}`);
+    } catch (error) {
+      console.error("✗ Lỗi gửi CA Certificate:", error);
+    }
+  }
+
   // Thay thế hàm handleMessage trong mqtt.js
   handleMessage(topic, message) {
     try {
       const messageStr = message.toString();
       console.log(`\n📨 Nhận message từ topic: ${topic}`);
       console.log("Raw message:", messageStr);
+
+      // ✅ XỬ LÝ REQUEST CA CERTIFICATE
+      if (topic.includes("/request_ca_cert")) {
+        try {
+          const data = JSON.parse(messageStr);
+          this.handleRequestCACertificate(data);
+        } catch (parseError) {
+          console.error("Lỗi parse request CA cert:", parseError);
+        }
+        return;
+      }
 
       // Xử lý theo topic cụ thể
       switch (topic) {
