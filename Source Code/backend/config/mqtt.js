@@ -44,7 +44,17 @@ class MQTTService {
       DEVICE_PROVISION_RESPONSE: "smartlock/device/provision/response",
       DEVICE_FINALIZE_REQUEST: "smartlock/device/finalize/request",
       DEVICE_FINALIZE_RESPONSE: "smartlock/device/finalize/response",
+      DEVICE_LOGIN: "smartlock/device/login",
+      DEVICE_LOGIN_RESPONSE: "smartlock/device/login/response",
+      DEVICE_HEARTBEAT: "smartlock/device/heartbeat",
     };
+
+    // Session storage
+    this.deviceSessions = new Map();
+    this.SESSION_TIMEOUT = 10 * 60 * 1000; // 10 phút
+
+    // Cleanup mỗi 2 phút
+    setInterval(() => this.cleanupExpiredSessions(), 2 * 60 * 1000);
   }
 
   // Kết nối tới MQTT Broker
@@ -117,6 +127,8 @@ class MQTTService {
       this.topics.DEVICE_PROVISION_REQUEST,
       this.topics.DEVICE_FINALIZE_REQUEST,
       "smartlock/device/+/request_ca_cert",
+      this.topics.DEVICE_LOGIN,
+      this.topics.DEVICE_HEARTBEAT,
     ];
 
     topicsToSubscribe.forEach((topic) => {
@@ -177,6 +189,315 @@ class MQTTService {
     }
 
     return true;
+  }
+
+  async handleDeviceLogin(data) {
+    console.log("\n=================================");
+    console.log("🔐 XỬ LÝ DEVICE LOGIN REQUEST");
+    console.log("=================================");
+    console.log("Dữ liệu:", data);
+
+    const { device_id, timestamp, signature } = data;
+
+    try {
+      // ✅ Validation
+      if (!device_id || !timestamp || !signature) {
+        console.log("✗ Thiếu thông tin");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id: device_id || "unknown",
+          success: false,
+          reason: "Missing required fields",
+        });
+      }
+
+      // ✅ Tìm device trong database
+      const device = await Device.findOne({ device_id });
+
+      if (!device) {
+        console.log("✗ Device không tồn tại");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Device not found",
+        });
+      }
+
+      // ✅ Kiểm tra device đã registered chưa
+      if (device.status !== "registered" || !device.certificate) {
+        console.log("✗ Device chưa registered");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Device not registered. Please complete provisioning first.",
+        });
+      }
+
+      // ✅ Kiểm tra certificate còn hạn không (optional)
+      if (
+        device.certificate_expires &&
+        new Date() > device.certificate_expires
+      ) {
+        console.log("✗ Certificate đã hết hạn");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Certificate expired. Please re-register device.",
+        });
+      }
+
+      // ✅ Verify signature
+      console.log("🔍 Đang verify signature...");
+
+      if (!device.public_key) {
+        console.log("✗ Không tìm thấy public key");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Public key not found",
+        });
+      }
+
+      // Verify timestamp signature
+      const verify = crypto.createVerify("SHA256");
+      verify.update(String(timestamp));
+      verify.end();
+
+      let isValid = false;
+      try {
+        isValid = verify.verify(
+          device.public_key,
+          Buffer.from(signature, "base64")
+        );
+      } catch (verifyError) {
+        console.error("✗ Lỗi verify:", verifyError.message);
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Signature verification error",
+        });
+      }
+
+      if (!isValid) {
+        console.log("✗ Signature không hợp lệ");
+
+        // Log failed attempt
+        await AccessLog.create({
+          access_method: "device_login",
+          result: "failed",
+          device_id: device_id,
+          additional_info: "Invalid signature",
+        });
+
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Invalid signature",
+        });
+      }
+
+      console.log("✓ Signature hợp lệ!");
+
+      // ✅ Kiểm tra timestamp replay attack (không quá cũ)
+      const timestampAge = Date.now() - timestamp;
+      if (timestampAge > 5 * 60 * 1000) {
+        // 5 phút
+        console.log("✗ Timestamp quá cũ (possible replay attack)");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Timestamp too old",
+        });
+      }
+
+      // ✅ Tạo session token
+      const sessionToken = crypto.randomBytes(32).toString("hex");
+
+      // ✅ Lưu session
+      this.deviceSessions.set(device_id, {
+        session_token: sessionToken,
+        device_id: device_id,
+        logged_in_at: new Date(),
+        last_heartbeat: new Date(),
+        status: "online",
+      });
+
+      // ✅ Cập nhật device trong database
+      device.status = "online";
+      device.last_seen = new Date();
+      await device.save();
+
+      console.log("✓ Device đăng nhập thành công:", device_id);
+      console.log("✓ Session token:", sessionToken.substring(0, 16) + "...");
+
+      // ✅ Gửi response
+      this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+        device_id,
+        success: true,
+        session_token: sessionToken,
+        message: "Login successful",
+        timestamp: new Date().toISOString(),
+      });
+
+      // ✅ Log thành công
+      await AccessLog.create({
+        access_method: "device_login",
+        result: "success",
+        device_id: device_id,
+        additional_info: "Device authenticated successfully",
+      });
+
+      // ✅ Gửi thông báo lên app
+      if (global.io) {
+        global.io.emit("device_status", {
+          device_id,
+          status: "online",
+          logged_in_at: new Date(),
+        });
+      }
+
+      console.log("=================================\n");
+    } catch (error) {
+      console.error("✗ Lỗi xử lý login:", error);
+
+      await AccessLog.create({
+        access_method: "device_login",
+        result: "failed",
+        device_id: device_id,
+        additional_info: `Login error: ${error.message}`,
+      });
+
+      this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+        device_id,
+        success: false,
+        reason: "Server error: " + error.message,
+      });
+    }
+  }
+
+  async handleDeviceHeartbeat(data) {
+    const { device_id, session_token, status } = data;
+
+    try {
+      // ✅ Kiểm tra session
+      const session = this.deviceSessions.get(device_id);
+
+      if (!session) {
+        console.log(
+          `⚠️ Device ${device_id} không có session - yêu cầu login lại`
+        );
+
+        // Gửi yêu cầu login lại
+        this.publish(`smartlock/device/${device_id}/reauth`, {
+          device_id,
+          reason: "Session not found. Please login again.",
+        });
+
+        return;
+      }
+
+      // ✅ Verify session token
+      if (session.session_token !== session_token) {
+        console.log(`✗ Session token không hợp lệ cho ${device_id}`);
+
+        // Xóa session cũ
+        this.deviceSessions.delete(device_id);
+
+        // Yêu cầu login lại
+        this.publish(`smartlock/device/${device_id}/reauth`, {
+          device_id,
+          reason: "Invalid session token. Please login again.",
+        });
+
+        return;
+      }
+
+      // ✅ Cập nhật heartbeat
+      session.last_heartbeat = new Date();
+      session.status = status || "online";
+      this.deviceSessions.set(device_id, session);
+
+      // ✅ Cập nhật database
+      await Device.findOneAndUpdate(
+        { device_id },
+        {
+          last_seen: new Date(),
+          status: status || "online",
+        }
+      );
+
+      console.log(
+        `💓 Heartbeat từ ${device_id} - Status: ${status || "online"}`
+      );
+
+      // ✅ Gửi thông báo lên app (nếu status thay đổi)
+      if (global.io && status) {
+        global.io.emit("device_status", {
+          device_id,
+          status: status,
+          last_seen: new Date(),
+        });
+      }
+    } catch (error) {
+      console.error(`✗ Lỗi xử lý heartbeat từ ${device_id}:`, error);
+    }
+  }
+
+  async cleanupExpiredSessions() {
+    console.log("\n🧹 Cleaning up expired sessions...");
+
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    for (const [device_id, session] of this.deviceSessions.entries()) {
+      const timeSinceHeartbeat =
+        now - new Date(session.last_heartbeat).getTime();
+
+      // Nếu không heartbeat trong 10 phút → xóa session
+      if (timeSinceHeartbeat > this.SESSION_TIMEOUT) {
+        this.deviceSessions.delete(device_id);
+        cleanedCount++;
+
+        console.log(`✓ Removed expired session: ${device_id}`);
+
+        // Cập nhật status trong database
+        await Device.findOneAndUpdate({ device_id }, { status: "offline" });
+
+        // Gửi thông báo lên app
+        if (global.io) {
+          global.io.emit("device_status", {
+            device_id,
+            status: "offline",
+            reason: "Session expired",
+          });
+        }
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`✓ Cleaned ${cleanedCount} expired session(s)`);
+    }
+  }
+
+  verifyDeviceSession(device_id, session_token) {
+    const session = this.deviceSessions.get(device_id);
+
+    if (!session) {
+      return { valid: false, reason: "Session not found" };
+    }
+
+    if (session.session_token !== session_token) {
+      return { valid: false, reason: "Invalid session token" };
+    }
+
+    // Kiểm tra timeout
+    const timeSinceHeartbeat =
+      Date.now() - new Date(session.last_heartbeat).getTime();
+    if (timeSinceHeartbeat > this.SESSION_TIMEOUT) {
+      this.deviceSessions.delete(device_id);
+      return { valid: false, reason: "Session expired" };
+    }
+
+    return { valid: true, session };
   }
 
   // --- HÀM LƯU ACCESS LOG ---
@@ -1084,6 +1405,23 @@ ${Buffer.from(certString).toString("base64")}
             this.handleDeviceFinalizeRequest(data);
           } catch (parseError) {
             console.error("Lỗi parse finalize request:", parseError);
+          }
+          break;
+        case this.topics.DEVICE_LOGIN:
+          try {
+            const loginData = JSON.parse(messageStr);
+            this.handleDeviceLogin(loginData);
+          } catch (parseError) {
+            console.error("Lỗi parse login request:", parseError);
+          }
+          break;
+
+        case this.topics.DEVICE_HEARTBEAT:
+          try {
+            const heartbeatData = JSON.parse(messageStr);
+            this.handleDeviceHeartbeat(heartbeatData);
+          } catch (parseError) {
+            console.error("Lỗi parse heartbeat:", parseError);
           }
           break;
         default:
