@@ -139,20 +139,6 @@ module.exports.registerDevice = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Lỗi tạo device:", error);
-
-    // try {
-    //   if (req.body.device_id) {
-    //     await AccessLog.create({
-    //       access_method: "device_provision_init",
-    //       result: "failed",
-    //       device_id: req.body.device_id,
-    //       additional_info: `Error: ${error.message}`,
-    //     });
-    //   }
-    // } catch (logError) {
-    //   console.error("⚠️ Không thể ghi error log:", logError.message);
-    // }
-
     if (!res.headersSent) {
       res.status(500).json({
         success: false,

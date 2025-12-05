@@ -544,40 +544,6 @@ class MQTTService {
     }
   }
 
-  // ✅ THÊM: Hàm kiểm tra device status (để debug)
-  async checkDeviceStatus(device_id) {
-    const device = await Device.findOne({ device_id });
-
-    if (!device) {
-      console.log(`Device ${device_id} không tồn tại`);
-      return null;
-    }
-
-    console.log("\n📊 DEVICE STATUS:");
-    console.log("Device ID:", device.device_id);
-    console.log("Status:", device.status);
-    console.log("Has certificate:", !!device.certificate);
-    console.log("Has public_key:", !!device.public_key);
-    console.log("Last seen:", device.last_seen);
-    console.log("Created at:", device.createdAt);
-
-    const session = this.deviceSessions.get(device_id);
-    if (session) {
-      console.log("\n💾 SESSION INFO:");
-      console.log(
-        "Session token:",
-        session.session_token.substring(0, 16) + "..."
-      );
-      console.log("Logged in:", session.logged_in_at);
-      console.log("Last heartbeat:", session.last_heartbeat);
-      console.log("Status:", session.status);
-    } else {
-      console.log("\n💾 SESSION: None");
-    }
-
-    return device;
-  }
-
   verifyDeviceSession(device_id, session_token) {
     const session = this.deviceSessions.get(device_id);
 
@@ -589,7 +555,7 @@ class MQTTService {
       };
     }
 
-    if (session.session_token !== session_token) {
+    if (session_token && session.session_token !== session_token) {
       console.log(`✗ Session token không hợp lệ cho ${device_id}`);
       return {
         valid: false,
@@ -724,7 +690,26 @@ class MQTTService {
   // Xử lý enrollment thẻ RFID
   async handleEnrollRFID(data) {
     console.log("💳 Xử lý đăng ký thẻ RFID...");
-    const { cardUid, userId, status } = data;
+    const { cardUid, userId, status, device_id } = data;
+
+    if (device_id) {
+      const verification = this.verifyDeviceSession(device_id);
+      if (!verification.valid) {
+        console.log(
+          `✗ Device ${device_id} chưa xác thực: ${verification.reason}`
+        );
+
+        if (global.io) {
+          global.io.to(`user_${userId}`).emit("rfid_enroll_result", {
+            success: false,
+            message: `Thiết bị chưa xác thực: ${verification.reason}`,
+            cardUid: cardUid,
+          });
+        }
+        return;
+      }
+      console.log(`✓ Device ${device_id} đã xác thực - Tiếp tục enroll`);
+    }
 
     if (status === "success") {
       try {
@@ -747,6 +732,7 @@ class MQTTService {
           card_id: cardUid,
           uid: cardUid,
           user_id: userId,
+          device_id: device_id,
           registered_at: new Date(),
         });
 
@@ -758,12 +744,10 @@ class MQTTService {
             message: "Đăng ký thẻ RFID thành công!",
             cardUid: cardUid,
             cardId: newCard.card_id,
+            device_id: device_id,
             registeredAt: newCard.createdAt,
           });
         }
-
-        // Phản hồi lại ESP32 hoặc app
-        // this.publish(this.topics.ENROLL_SUCCESS, { cardUid, userId });
       } catch (err) {
         console.error("✗ Lỗi khi lưu thẻ RFID:", err);
 
@@ -774,35 +758,48 @@ class MQTTService {
             cardUid: cardUid,
           });
         }
-
-        // this.publish(this.topics.ENROLL_FAILED, {
-        //   cardUid,
-        //   userId,
-        //   reason: err.message,
-        // });
       }
     } else {
       console.log("✗ Đăng ký thẻ thất bại:", data.reason);
-      //   this.publish(this.topics.ENROLL_FAILED, {
-      //     cardUid,
-      //     userId,
-      //     reason: data.reason,
-      //   });
     }
   }
 
   async handleCheckRFID(data) {
     console.log("💳 Kiểm tra thẻ RFID để mở khóa...");
-    const { cardUid } = data;
+    const { cardUid, device_id } = data;
 
     try {
-      const card = await RFIDCard.findOne({ uid: cardUid });
+      if (device_id) {
+        const verification = this.verifyDeviceSession(device_id);
+        if (!verification.valid) {
+          console.log(
+            `✗ Device ${device_id} chưa xác thực: ${verification.reason}`
+          );
+
+          // ✅ Gửi thông báo về ESP32
+          this.publish(`smartlock/device/${device_id}/reauth`, {
+            device_id,
+            reason: verification.reason,
+          });
+
+          return;
+        }
+        console.log(`✓ Device ${device_id} đã xác thực - Tiếp tục check RFID`);
+      }
+
+      const card = await RFIDCard.findOne({
+        uid: cardUid,
+        device_id: device_id,
+      }).select("user_id uid card_id");
 
       if (card) {
         console.log("✓ Thẻ hợp lệ - Gửi lệnh mở khóa");
 
-        // ✅ GỬI LỆNH MỞ KHÓA
-        this.publish(this.topics.UNLOCK, {
+        const unlockTopic = device_id
+          ? `smartlock/device/${device_id}/control/unlock`
+          : this.topics.UNLOCK;
+
+        this.publish(unlockTopic, {
           action: "unlock",
           method: "rfid",
           cardUid: cardUid,
@@ -810,19 +807,27 @@ class MQTTService {
           timestamp: new Date().toISOString(),
         });
 
-        // Lưu log
+        // ✅ SỬA: Lưu log với userId đúng format
         await this.saveAccessLog({
           method: "rfid",
-          data: { cardUid, success: true },
-          deviceId: null,
+          data: {
+            cardUid,
+            success: true,
+            cardId: card.card_id,
+          },
+          deviceId: device_id,
         });
 
         console.log("📤 Đã gửi lệnh mở khóa cho thẻ:", cardUid);
       } else {
         console.log("✗ Thẻ không hợp lệ - Từ chối");
 
-        // ✅ GỬI LỆNH TỪ CHỐI (optional - nếu muốn)
-        this.publish(this.topics.CONTROL, {
+        // ✅ GỬI LỆNH TỪ CHỐI
+        const controlTopic = device_id
+          ? `smartlock/device/${device_id}/control`
+          : this.topics.CONTROL;
+
+        this.publish(controlTopic, {
           action: "deny",
           reason: "invalid_card",
           cardUid: cardUid,
@@ -831,21 +836,70 @@ class MQTTService {
         // Lưu log
         await this.saveAccessLog({
           method: "rfid",
-          data: { cardUid, success: false, reason: "Card not found" },
-          deviceId: null,
+          data: {
+            cardUid,
+            success: false,
+            reason: "Card not found or not registered for this device",
+          },
+          deviceId: device_id,
         });
       }
     } catch (err) {
       console.error("✗ Lỗi kiểm tra thẻ:", err);
+
+      // ✅ Gửi lỗi về ESP32
+      if (device_id) {
+        this.publish(`smartlock/device/${device_id}/control`, {
+          action: "deny",
+          reason: "server_error",
+          cardUid: cardUid,
+        });
+      }
     }
   }
 
   async handleFingerprint(data) {
     console.log("🔐 Xử lý xác thực vân tay...");
+
+    const { fingerprintId, status, device_id } = data;
+
+    // ✅ THÊM: Verify session
+    if (device_id) {
+      const verification = this.verifyDeviceSession(device_id);
+      if (!verification.valid) {
+        console.log(
+          `✗ Device ${device_id} chưa xác thực: ${verification.reason}`
+        );
+
+        // Gửi yêu cầu login lại
+        this.publish(`smartlock/device/${device_id}/reauth`, {
+          device_id,
+          reason: verification.reason,
+        });
+
+        return;
+      }
+      console.log(
+        `✓ Device ${device_id} đã xác thực - Tiếp tục xác thực vân tay`
+      );
+    }
+
     const isValid = data.status === "valid";
 
     if (isValid) {
       console.log("✓ Vân tay hợp lệ - Mở khóa");
+
+      // ✅ Gửi unlock vào topic riêng
+      const unlockTopic = device_id
+        ? `smartlock/device/${device_id}/control/unlock`
+        : this.topics.UNLOCK;
+
+      this.publish(unlockTopic, {
+        action: "unlock",
+        method: "fingerprint",
+        fingerprintId: fingerprintId,
+        timestamp: new Date().toISOString(),
+      });
     } else {
       console.log("✗ Vân tay không hợp lệ");
     }
@@ -854,16 +908,30 @@ class MQTTService {
     await this.saveAccessLog({
       method: "fingerprint",
       data: { ...data, success: isValid },
-      deviceId: data.deviceId,
+      deviceId: device_id,
     });
   }
 
   // Thêm handler mới cho kết quả đăng ký vân tay
   async handleEnrollFingerprintResult(data) {
     console.log("🔐 Xử lý kết quả đăng ký vân tay từ ESP32...");
-    console.log("Dữ liệu nhận được:", data);
+    const { status, fingerprintId, userId, reason, device_id } = data;
 
-    const { status, fingerprintId, userId, reason } = data;
+    // ✅ THÊM: Verify device session
+    if (device_id) {
+      const verification = this.verifyDeviceSession(device_id);
+      if (!verification.valid) {
+        console.log(`✗ Device ${device_id} chưa xác thực`);
+
+        if (global.io) {
+          global.io.to(`user_${userId}`).emit("fingerprint_enroll_result", {
+            success: false,
+            message: `Thiết bị chưa xác thực: ${verification.reason}`,
+          });
+        }
+        return;
+      }
+    }
 
     try {
       if (status === "success") {
@@ -871,11 +939,12 @@ class MQTTService {
         const fingerprint = await Fingerprint.create({
           fingerprint_id: String(fingerprintId),
           user_id: userId,
+          device_id: device_id,
           createdAt: new Date(),
         });
 
         console.log(
-          `✓ Đã lưu vân tay ID ${fingerprintId} vào database cho user ${userId}`
+          `✓ Đã lưu vân tay ID ${fingerprintId} cho device ${device_id}`
         );
 
         // Gửi thông báo thành công lên app qua Socket.IO
@@ -885,6 +954,7 @@ class MQTTService {
             message: "Đăng ký vân tay thành công!",
             fingerprintId: fingerprintId,
             userId: userId,
+            device_id: device_id,
             registeredAt: fingerprint.createdAt,
           });
         }
@@ -921,13 +991,35 @@ class MQTTService {
     console.log("🗑️ Xử lý kết quả xóa vân tay từ ESP32...");
     console.log("Dữ liệu nhận được:", data);
 
-    const { status, fingerprintId, userId, reason } = data;
+    const { status, fingerprintId, userId, reason, device_id } = data;
+
+    // ✅ THÊM: Verify device session
+    if (device_id) {
+      const verification = this.verifyDeviceSession(device_id);
+      if (!verification.valid) {
+        console.log(
+          `✗ Device ${device_id} chưa xác thực: ${verification.reason}`
+        );
+
+        if (global.io) {
+          global.io.to(`user_${userId}`).emit("fingerprint_delete_result", {
+            success: false,
+            message: `Thiết bị chưa xác thực: ${verification.reason}`,
+            fingerprintId: fingerprintId,
+            userId: userId,
+          });
+        }
+        return;
+      }
+      console.log(`✓ Device ${device_id} đã xác thực - Tiếp tục xử lý`);
+    }
 
     try {
       if (status === "success") {
         // Xóa vân tay khỏi database
         const result = await Fingerprint.findOneAndDelete({
           fingerprint_id: String(fingerprintId),
+          device_id: device_id,
         });
 
         if (result) {
@@ -940,6 +1032,7 @@ class MQTTService {
               message: "Xóa vân tay thành công!",
               fingerprintId: fingerprintId,
               userId: userId,
+              device_id: device_id,
             });
           }
         } else {
@@ -967,6 +1060,7 @@ class MQTTService {
             message: reason || "Xóa vân tay thất bại",
             fingerprintId: fingerprintId,
             userId: userId,
+            device_id: device_id,
           });
         }
       }
@@ -1461,6 +1555,11 @@ ${Buffer.from(certString).toString("base64")}
         }
         return;
       }
+
+      // if (topic.match(/^smartlock\/device\/[^\/]+\/control\/unlock$/)) {
+      //   console.log("🔓 Nhận lệnh unlock từ topic riêng của device");
+      //   return;
+      // }
 
       // Xử lý theo topic cụ thể
       switch (topic) {

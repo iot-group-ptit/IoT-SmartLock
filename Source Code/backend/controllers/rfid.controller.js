@@ -8,27 +8,63 @@ const mqttClient = require("../config/mqtt");
 //[POST] http://localhost:3000/rfid/enroll - User_manager đăng ký thẻ RFID mới cho user
 module.exports.enrollRFID = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId, device_id } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ message: "userId là bắt buộc" });
+    if (!userId || !device_id) {
+      return res.status(400).json({
+        success: false,
+        message: "userId và device_id là bắt buộc",
+      });
     }
 
-    // Gửi lệnh enroll đến ESP32 qua MQTT
-    mqttClient.publish(mqttClient.topics.ENROLL_RFID, `ENROLL_RFID:${userId}`);
+    // ✅ THÊM: Kiểm tra device có tồn tại và đã đăng nhập chưa
+    const device = await Device.findOne({ device_id });
+
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: "Thiết bị không tồn tại trong hệ thống",
+      });
+    }
+
+    if (device.status !== "online") {
+      return res.status(400).json({
+        success: false,
+        message: "Thiết bị chưa online hoặc chưa đăng nhập",
+      });
+    }
+
+    // ✅ THÊM: Verify session của device
+    const session = mqttClient.verifyDeviceSession(device_id);
+    if (!session.valid) {
+      return res.status(401).json({
+        success: false,
+        message: `Thiết bị chưa xác thực: ${session.reason}`,
+      });
+    }
+
+    console.log(`✓ Device ${device_id} đã xác thực - Cho phép enroll`);
+
+    // ✅ GỬI LỆNH ENROLL với device_id cụ thể
+    const enrollCommand = `ENROLL_RFID:${userId}`;
+
+    // ✅ Gửi vào topic riêng của device
+    const deviceTopic = `smartlock/device/${device_id}/enroll/rfid`;
+    mqttClient.publish(deviceTopic, enrollCommand);
 
     res.json({
       success: true,
-      message:
-        "Đã gửi yêu cầu enroll thẻ RFID đến thiết bị. Vui lòng đặt thẻ lên cảm biến.",
+      message: "Đã gửi yêu cầu enroll thẻ RFID đến thiết bị",
       userId: userId,
-      // ✅ App sẽ dùng Socket.IO để lắng nghe kết quả
-      instruction:
-        "Lắng nghe event 'rfid_enroll_result' qua Socket.IO để nhận kết quả",
+      device_id: device_id,
+      instruction: "Lắng nghe event 'rfid_enroll_result' qua Socket.IO",
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Lỗi server" });
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server: " + err.message,
+    });
   }
 };
 
