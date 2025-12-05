@@ -4,6 +4,7 @@ const RFIDCard = require("../models/rfid.model");
 const Fingerprint = require("../models/fingerprint.model");
 const User = require("../models/user.model");
 const Device = require("../models/device.model");
+const securityAlertService = require("../services/securityAlert.service");
 const crypto = require("crypto");
 
 class MQTTService {
@@ -218,6 +219,11 @@ class MQTTService {
       console.log(
         `✓ Đã lưu access log: ${log._id} (User: ${userId || "NULL"})`
       );
+
+      if (!data.success && deviceId) {
+        await securityAlertService.checkFailedAttempts(deviceId, method);
+      }
+
       return log;
     } catch (error) {
       console.error("✗ Lỗi lưu access log:", error);

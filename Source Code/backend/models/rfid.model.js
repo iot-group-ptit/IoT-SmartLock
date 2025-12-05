@@ -23,6 +23,11 @@ const rfidCardSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    device_id: {
+      type: String,
+      ref: "Device",
+      required: false,
+    },
   },
   {
     timestamps: true,
