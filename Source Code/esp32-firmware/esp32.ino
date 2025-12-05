@@ -14,7 +14,8 @@
 #include "mbedtls/rsa.h"
 #include "mbedtls/md.h"
 #include "mbedtls/base64.h"
-#include "SPIFFS.h"  
+#include "SPIFFS.h"  // Để lưu private key
+#include "mbedtls/x509_crt.h"  // ✅ THÊM: Để parse và verify certificate
 
 
 // --- WiFi Configuration ---
@@ -91,6 +92,13 @@ mbedtls_entropy_context entropy;
 mbedtls_ctr_drbg_context ctr_drbg;
 bool rsa_keys_ready = false;
 
+// File path cho CA certificate
+const char* CA_CERT_FILE = "/ca_cert.pem";
+
+// Context cho CA certificate
+mbedtls_x509_crt ca_cert;
+bool ca_cert_loaded = false;
+
 // File paths
 const char* PRIVATE_KEY_FILE = "/private_key.pem";
 const char* PUBLIC_KEY_FILE = "/public_key.pem";
@@ -143,6 +151,246 @@ void setupWiFi() {
     ESP.restart();  // Khởi động lại ESP32
   }
 }
+
+// ============================================
+// HÀM KHỞI TẠO CA CERTIFICATE
+// ============================================
+
+bool initCACertificate() {
+  Serial.println("\n=================================");
+  Serial.println("🔐 KHỞI TẠO CA CERTIFICATE");
+  Serial.println("=================================");
+  
+  mbedtls_x509_crt_init(&ca_cert);
+  
+  // Kiểm tra file CA cert đã tồn tại chưa
+  if (!SPIFFS.exists(CA_CERT_FILE)) {
+    Serial.println("⚠️ CA Certificate chưa tồn tại");
+    Serial.println("Cần yêu cầu CA cert từ server");
+    Serial.println("=================================\n");
+    return false;
+  }
+  
+  // Đọc CA certificate từ file
+  File file = SPIFFS.open(CA_CERT_FILE, FILE_READ);
+  if (!file) {
+    Serial.println("✗ Không thể đọc CA certificate");
+    return false;
+  }
+  
+  size_t size = file.size();
+  uint8_t *buf = (uint8_t*)malloc(size + 1);
+  if (!buf) {
+    Serial.println("✗ Không đủ RAM để load CA cert");
+    file.close();
+    return false;
+  }
+  
+  file.read(buf, size);
+  buf[size] = 0;
+  file.close();
+  
+  // Parse CA certificate
+  int ret = mbedtls_x509_crt_parse(&ca_cert, buf, size + 1);
+  free(buf);
+  
+  if (ret != 0) {
+    Serial.printf("✗ Lỗi parse CA certificate: -0x%04x\n", -ret);
+    return false;
+  }
+  
+  ca_cert_loaded = true;
+  
+  // In thông tin CA certificate
+  Serial.println("✓ CA Certificate loaded thành công!");
+  Serial.println("\n--- THÔNG TIN CA CERTIFICATE ---");
+  
+  char subject_buf[256];
+  mbedtls_x509_dn_gets(subject_buf, sizeof(subject_buf), &ca_cert.subject);
+  Serial.print("Subject: ");
+  Serial.println(subject_buf);
+  
+  char issuer_buf[256];
+  mbedtls_x509_dn_gets(issuer_buf, sizeof(issuer_buf), &ca_cert.issuer);
+  Serial.print("Issuer: ");
+  Serial.println(issuer_buf);
+  
+  // In validity
+  char not_before[32], not_after[32];
+  snprintf(not_before, sizeof(not_before), "%04d-%02d-%02d %02d:%02d:%02d",
+           ca_cert.valid_from.year, ca_cert.valid_from.mon, ca_cert.valid_from.day,
+           ca_cert.valid_from.hour, ca_cert.valid_from.min, ca_cert.valid_from.sec);
+  snprintf(not_after, sizeof(not_after), "%04d-%02d-%02d %02d:%02d:%02d",
+           ca_cert.valid_to.year, ca_cert.valid_to.mon, ca_cert.valid_to.day,
+           ca_cert.valid_to.hour, ca_cert.valid_to.min, ca_cert.valid_to.sec);
+  
+  Serial.print("Valid From: ");
+  Serial.println(not_before);
+  Serial.print("Valid To: ");
+  Serial.println(not_after);
+  
+  Serial.println("=================================\n");
+  
+  return true;
+}
+
+// ============================================
+// HÀM LƯU CA CERTIFICATE (Nhận từ server)
+// ============================================
+
+bool saveCACertificate(String caCertPem) {
+  Serial.println("💾 Đang lưu CA certificate...");
+
+  // ✅ SỬA: Replace cả \r\n và \n
+  caCertPem.replace("\\r\\n", "\n");
+  caCertPem.replace("\\n", "\n");
+  
+  File file = SPIFFS.open(CA_CERT_FILE, FILE_WRITE);
+  if (!file) {
+    Serial.println("✗ Không thể mở file CA cert để ghi");
+    return false;
+  }
+  
+  file.print(caCertPem);
+  file.close();
+  
+  Serial.println("✓ CA certificate đã lưu vào SPIFFS");
+  
+  // Load CA cert vào memory
+  return initCACertificate();
+}
+
+// ============================================
+// HÀM VERIFY DEVICE CERTIFICATE
+// ============================================
+
+bool verifyDeviceCertificate(String deviceCertPem) {
+  Serial.println("\n=================================");
+  Serial.println("🔍 VERIFY DEVICE CERTIFICATE");
+  Serial.println("=================================");
+  
+  if (!ca_cert_loaded) {
+    Serial.println("✗ CA Certificate chưa được load!");
+    Serial.println("Không thể verify device certificate");
+    return false;
+  }
+  
+  // Parse device certificate
+  mbedtls_x509_crt device_cert;
+  mbedtls_x509_crt_init(&device_cert);
+  
+  int ret = mbedtls_x509_crt_parse(&device_cert, 
+                                   (const unsigned char*)deviceCertPem.c_str(), 
+                                   deviceCertPem.length() + 1);
+  
+  if (ret != 0) {
+    Serial.printf("✗ Lỗi parse device certificate: -0x%04x\n", -ret);
+    mbedtls_x509_crt_free(&device_cert);
+    return false;
+  }
+  
+  Serial.println("✓ Device certificate parsed");
+  
+  // In thông tin device certificate
+  Serial.println("\n--- THÔNG TIN DEVICE CERTIFICATE ---");
+  
+  char subject_buf[256];
+  mbedtls_x509_dn_gets(subject_buf, sizeof(subject_buf), &device_cert.subject);
+  Serial.print("Subject: ");
+  Serial.println(subject_buf);
+  
+  char issuer_buf[256];
+  mbedtls_x509_dn_gets(issuer_buf, sizeof(issuer_buf), &device_cert.issuer);
+  Serial.print("Issuer: ");
+  Serial.println(issuer_buf);
+  
+  // Serial number
+  char serial_buf[128];
+  mbedtls_x509_serial_gets(serial_buf, sizeof(serial_buf), &device_cert.serial);
+  Serial.print("Serial Number: ");
+  Serial.println(serial_buf);
+  
+  // Validity
+  char not_before[32], not_after[32];
+  snprintf(not_before, sizeof(not_before), "%04d-%02d-%02d %02d:%02d:%02d",
+           device_cert.valid_from.year, device_cert.valid_from.mon, device_cert.valid_from.day,
+           device_cert.valid_from.hour, device_cert.valid_from.min, device_cert.valid_from.sec);
+  snprintf(not_after, sizeof(not_after), "%04d-%02d-%02d %02d:%02d:%02d",
+           device_cert.valid_to.year, device_cert.valid_to.mon, device_cert.valid_to.day,
+           device_cert.valid_to.hour, device_cert.valid_to.min, device_cert.valid_to.sec);
+  
+  Serial.print("Valid From: ");
+  Serial.println(not_before);
+  Serial.print("Valid To: ");
+  Serial.println(not_after);
+  
+  Serial.println("\n--- BẮT ĐẦU VERIFY ---");
+  
+  // Verify certificate chain
+  uint32_t flags;
+  ret = mbedtls_x509_crt_verify(&device_cert, 
+                                &ca_cert, 
+                                NULL,  // CRL (Certificate Revocation List) - NULL nếu không dùng
+                                NULL,  // CN (Common Name) - NULL để không check CN
+                                &flags,
+                                NULL,  // Verify callback
+                                NULL); // Callback context
+  
+  if (ret != 0) {
+    Serial.printf("✗ Verify thất bại! Error code: -0x%04x\n", -ret);
+    
+    // In chi tiết lỗi
+    char vrfy_buf[512];
+    mbedtls_x509_crt_verify_info(vrfy_buf, sizeof(vrfy_buf), "  ! ", flags);
+    Serial.println("Chi tiết lỗi:");
+    Serial.println(vrfy_buf);
+    
+    mbedtls_x509_crt_free(&device_cert);
+    return false;
+  }
+  
+  Serial.println("✓ VERIFY THÀNH CÔNG!");
+  Serial.println("   - Certificate signature hợp lệ");
+  Serial.println("   - Được ký bởi CA trust");
+  Serial.println("   - Certificate còn hiệu lực");
+  Serial.println("=================================\n");
+  
+  mbedtls_x509_crt_free(&device_cert);
+  return true;
+}
+
+// ============================================
+// HÀM KIỂM TRA CERTIFICATE CÒN HẠN
+// ============================================
+
+bool isCertificateValid() {
+  if (device_certificate.length() == 0) {
+    return false;
+  }
+  
+  // Parse certificate
+  mbedtls_x509_crt cert;
+  mbedtls_x509_crt_init(&cert);
+  
+  int ret = mbedtls_x509_crt_parse(&cert, 
+                                   (const unsigned char*)device_certificate.c_str(), 
+                                   device_certificate.length() + 1);
+  
+  if (ret != 0) {
+    mbedtls_x509_crt_free(&cert);
+    return false;
+  }
+  
+  // Kiểm tra thời hạn (so với thời gian hiện tại)
+  // Note: ESP32 cần có thời gian chính xác (sync qua NTP)
+  
+  // Tạm thời return true (cần implement NTP để có thời gian chính xác)
+  mbedtls_x509_crt_free(&cert);
+  
+  Serial.println("⚠️ TODO: Implement NTP time sync để check validity");
+  return true;
+}
+
 
 // ============================================
 // PHẦN 2: RSA KEY MANAGEMENT (ĐÃ SỬA)
@@ -504,10 +752,36 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Noi dung: ");
   Serial.println(message);
 
-  // ✅ XỬ LÝ NHẬN TOKEN TỪ SERVER (TOPIC MỚI)
-  if (String(topic) == topic_device_provision_token) {
-    Serial.println("📥 Nhận provisioning token từ server");
-    parseProvisionToken(message); // Parse và tự động bắt đầu provision
+  // ✅ XỬ LÝ NHẬN CA CERTIFICATE TỪ SERVER
+  String caCertTopic = "smartlock/device/" + device_id + "/ca_certificate";
+  if (String(topic) == caCertTopic) {
+    Serial.println("📥 Nhận CA Certificate từ server");
+    
+    // Parse JSON để lấy CA cert
+    int certStart = message.indexOf("\"ca_certificate\":\"") + 18;
+    int certEnd = message.lastIndexOf("\"");
+    
+    if (certStart > 17 && certEnd > certStart) {
+      String caCertPem = message.substring(certStart, certEnd);
+
+      // ✅ SỬA: Replace cả \r\n và \n
+    caCertPem.replace("\\r\\n", "\n");
+    caCertPem.replace("\\n", "\n");
+      
+      if (saveCACertificate(caCertPem)) {
+        Serial.println("✅ CA Certificate đã lưu và load thành công!");
+      } else {
+        Serial.println("✗ Lỗi lưu CA Certificate");
+      }
+    }
+    return;
+  }
+
+  // ✅ XỬ LÝ NHẬN TOKEN TỪ TOPIC RIÊNG
+  String deviceProvisionTopic = "smartlock/device/" + device_id + "/provision/token";
+  if (String(topic) == deviceProvisionTopic) {
+    Serial.println("📥 Nhận provisioning token TỪ TOPIC RIÊNG của thiết bị này");
+    parseProvisionToken(message);
     return;
   }
 
@@ -634,15 +908,27 @@ void mqttReconnect() {
       Serial.print("Da subscribe topic: ");
       Serial.println(topic_unlock);
 
-      // ✅ Subscribe các topic (THÊM topic mới)
-      mqttClient.subscribe(topic_device_provision_token); // ✅ Topic mới
-      Serial.println("Da subscribe: smartlock/device/provision/token");
+      // // ✅ Subscribe các topic (THÊM topic mới)
+      // mqttClient.subscribe(topic_device_provision_token); // ✅ Topic mới
+      // Serial.println("Da subscribe: smartlock/device/provision/token");
+
+      // ✅ SỬA: SUBSCRIBE TOPIC RIÊNG CỦA DEVICE NÀY
+      String deviceProvisionTopic = "smartlock/device/" + device_id + "/provision/token";
+      mqttClient.subscribe(deviceProvisionTopic.c_str());
+      Serial.print("Da subscribe: ");
+      Serial.println(deviceProvisionTopic);
 
       mqttClient.subscribe(topic_device_provision_res);
   Serial.println("Da subscribe: smartlock/device/provision/response");
   
   mqttClient.subscribe(topic_device_finalize_res);
   Serial.println("Da subscribe: smartlock/device/finalize/response");
+
+  // ✅ THÊM ĐOẠN NÀY:
+String caCertTopic = "smartlock/device/" + device_id + "/ca_certificate";
+mqttClient.subscribe(caCertTopic.c_str());
+Serial.print("Da subscribe: ");
+Serial.println(caCertTopic);
       
       mqttClient.publish(topic_status, "{\"status\":\"online\"}");
       
@@ -673,6 +959,9 @@ void setup() {
     // Vẫn tiếp tục chạy để có thể unlock bằng RFID/vân tay
   }
 
+  // ✅ THÊM: Khởi tạo CA Certificate (nếu có)
+  initCACertificate();
+
   espClient.setInsecure();
 
   // ✅ Set buffer size trước khi setServer
@@ -695,6 +984,27 @@ void setup() {
   rfid.PCD_Init();
   Serial.println("RFID da san sang!");
 
+  // ✅ KIỂM TRA CERTIFICATE
+  if (SPIFFS.exists(CERTIFICATE_FILE)) {
+    File file = SPIFFS.open(CERTIFICATE_FILE, FILE_READ);
+    if (file) {
+      device_certificate = file.readString();
+      file.close();
+      Serial.println("✓ Đã load certificate từ SPIFFS");
+      
+      // Verify certificate nếu có CA cert
+      if (ca_cert_loaded) {
+        if (verifyDeviceCertificate(device_certificate)) {
+          Serial.println("✅ Device certificate hợp lệ!");
+        } else {
+          Serial.println("⚠️ Device certificate KHÔNG hợp lệ!");
+          Serial.println("Cần đăng ký lại device");
+          device_certificate = "";
+        }
+      }
+    }
+  }
+
   // ✅ THÊM: Kiểm tra nếu chưa có certificate thì request provision
   if (device_certificate.length() == 0) {
     Serial.println("\n⚠️ Thiết bị chưa được đăng ký!");
@@ -703,6 +1013,36 @@ void setup() {
   } else {
     Serial.println("✓ Thiết bị đã có certificate, sẵn sàng hoạt động");
   }
+}
+
+// ============================================
+// HÀM REQUEST CA CERTIFICATE TỪ SERVER
+// ============================================
+
+void requestCACertificate() {
+  Serial.println("📤 Yêu cầu CA Certificate từ server...");
+  
+  String topic = "smartlock/device/" + device_id + "/request_ca_cert";
+  String payload = "{\"device_id\":\"" + device_id + "\"}";
+  
+  mqttClient.publish(topic.c_str(), payload.c_str());
+  Serial.println("✓ Đã gửi request CA cert");
+}
+
+// ============================================
+// HELPER: CLEAN UP CERTIFICATES
+// ============================================
+
+void cleanupCertificates() {
+  mbedtls_x509_crt_free(&ca_cert);
+  ca_cert_loaded = false;
+  
+  SPIFFS.remove(CA_CERT_FILE);
+  SPIFFS.remove(CERTIFICATE_FILE);
+  
+  device_certificate = "";
+  
+  Serial.println("✓ Đã xóa tất cả certificates");
 }
 
 void loop() {
@@ -1195,6 +1535,10 @@ void parseProvisionResponse(String jsonString) {
   }
 }
 
+// ============================================
+// SỬA HÀM parseFinalizeResponse
+// ============================================
+
 void parseFinalizeResponse(String jsonString) {
   if (jsonString.indexOf("\"success\":true") > 0) {
     Serial.println("✓ Finalize thành công!");
@@ -1204,18 +1548,71 @@ void parseFinalizeResponse(String jsonString) {
     
     if (certStart > 14 && certEnd > certStart) {
       device_certificate = jsonString.substring(certStart, certEnd);
+
+          // ✅ SỬA: Replace cả \r\n và \n
+      device_certificate.replace("\\r\\n", "\n");
       device_certificate.replace("\\n", "\n");
       
-      // Lưu certificate vào SPIFFS
-      File file = SPIFFS.open(CERTIFICATE_FILE, FILE_WRITE);
-      if (file) {
-        file.print(device_certificate);
-        file.close();
-        Serial.println("✓ Certificate đã lưu vào SPIFFS");
+      // ✅ VERIFY CERTIFICATE TRƯỚC KHI LƯU
+      if (ca_cert_loaded) {
+        if (verifyDeviceCertificate(device_certificate)) {
+          Serial.println("✅ Certificate đã được verify thành công!");
+          
+          // Lưu certificate vào SPIFFS
+          File file = SPIFFS.open(CERTIFICATE_FILE, FILE_WRITE);
+          if (file) {
+            file.print(device_certificate);
+            file.close();
+            Serial.println("✓ Certificate đã lưu vào SPIFFS");
+          }
+          
+          Serial.println("\n✅ ĐĂNG KÝ THIẾT BỊ HOÀN TẤT!");
+          Serial.println("Device đã sẵn sàng!");
+        } else {
+          Serial.println("✗ Certificate verification thất bại!");
+          Serial.println("KHÔNG lưu certificate!");
+        }
+      } else {
+        Serial.println("⚠️ CA cert chưa load");
+        
+        // Lưu certificate vào SPIFFS
+        File file = SPIFFS.open(CERTIFICATE_FILE, FILE_WRITE);
+        if (file) {
+          file.print(device_certificate);
+          file.close();
+          Serial.println("✓ Certificate đã lưu vào SPIFFS (chưa verify)");
+        }
+
+        // ✅ THÊM: Request CA cert để verify
+        Serial.println("📤 Đang yêu cầu CA Certificate từ server...");
+        delay(500); // Delay nhỏ để ổn định MQTT
+        requestCACertificate();
+        
+        // Đợi 2 giây để nhận CA cert
+        Serial.println("⏳ Chờ nhận CA cert...");
+        unsigned long startWait = millis();
+        while (!ca_cert_loaded && (millis() - startWait < 5000)) {
+          mqttClient.loop(); // Xử lý MQTT messages
+          delay(100);
+        }
+        
+        // Verify lại sau khi nhận CA cert
+        if (ca_cert_loaded) {
+          Serial.println("\n🔍 Đang verify certificate với CA cert vừa nhận...");
+          if (verifyDeviceCertificate(device_certificate)) {
+            Serial.println("✅ Certificate đã được verify thành công!");
+            Serial.println("\n✅ ĐĂNG KÝ THIẾT BỊ HOÀN TẤT!");
+            Serial.println("Device đã sẵn sàng!");
+          } else {
+            Serial.println("✗ Certificate verification thất bại!");
+            Serial.println("⚠️ Certificate đã lưu nhưng chưa được verify");
+          }
+        } else {
+          Serial.println("⚠️ Không nhận được CA cert từ server");
+          Serial.println("⚠️ Certificate đã lưu nhưng chưa được verify");
+          Serial.println("💡 Bạn có thể verify sau bằng cách reset device");
+        }
       }
-      
-      Serial.println("\n✅ ĐĂNG KÝ THIẾT BỊ HOÀN TẤT!");
-      Serial.println("Device đã sẵn sàng!");
     }
   } else {
     Serial.println("✗ Finalize thất bại!");
@@ -1227,3 +1624,8 @@ void parseFinalizeResponse(String jsonString) {
     }
   }
 }
+
+
+
+
+
