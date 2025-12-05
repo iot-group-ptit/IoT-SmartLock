@@ -24,7 +24,7 @@
     <string name="recent_access">Recent access</string>
     <string name="successful">Successful</string>
     <string name="go_to_statistics">Go to statistics</string>
-    <string name="register">Register</string>
+    <string name="register">Create new account</string>
     <string name="welcome_back">Welcome back!</string>
     <string name="login_to_continue">Login to continue</string>
     <string name="password">Password</string>
@@ -34,7 +34,7 @@
     <string name="don_t_have_an_account">Don\'t have an account?</string>
     <string name="fullname">Fullname</string>
     <string name="fill_in_all_fields_to_register">Fill in all fields to register</string>
-    <string name="create_new_account">Create new account</string>
+    <string name="create_account_for_manager">Create new account for manager</string>
     <string name="phone_number">Phone number</string>
     <string name="confirm_password">Confirm password</string>
     <string name="i_agree_to_the_terms_of_use_and_privacy_policy">I agree to the Terms of Use and Privacy Policy</string>
@@ -52,4 +52,44 @@
     <string name="device_smart_key_authenx">Device: Smart key AuthenX</string>
     <string name="new_available_version">New available version</string>
     <string name="log_out">Logout</string>
+    
+    <!-- User Management -->
+    <string name="user_management">User Management</string>
+    <string name="manage_user_managers">Manage User Managers</string>
+    <string name="add_manager">Add Manager</string>
+    <string name="add_user">Add User</string>
+    <string name="total_users">Total: %d users</string>
+    
+    <!-- Create User -->
+    <string name="create_new_user">Create New User</string>
+    <string name="create_user_description">Create a new user to register fingerprint or RFID card</string>
+    <string name="full_name">Full Name</string>
+    <string name="phone">Phone</string>
+    <string name="create_user">Create User</string>
+    <string name="note_user_no_login">💡 Note: This user will not be able to login to the app.\nOnly used to register fingerprint/RFID for unlocking.</string>
+    <string name="name_required">Name is required</string>
+    <string name="phone_required">Phone is required</string>
+    <string name="invalid_phone">Invalid phone number</string>
+    <string name="create_user_success">User %s created successfully!</string>
+    
+    <!-- Enroll Biometric -->
+    <string name="enroll_fingerprint">Enroll Fingerprint</string>
+    <string name="user_label">User: %s</string>
+    <string name="fingerprint_id_label">Fingerprint ID: %d</string>
+    <string name="start_enrollment">Start Enrollment</string>
+    <string name="done">Done</string>
+    <string name="sending_command">Sending enrollment command to device...</string>
+    <string name="place_finger_on_sensor">Please place finger on sensor</string>
+    <string name="enrollment_instruction">📱 Place finger on sensor 3 times\n🔄 Wait for ESP32 to process and save data\n✅ System will automatically complete</string>
+    <string name="enrollment_success">Fingerprint enrolled successfully! ✅</string>
+    <string name="user_id_not_found">User ID not found</string>
+    <string name="enrollment_failed">Enrollment failed</string>
+    
+    <!-- Organization Management -->
+    <string name="create_organization">Create Organization</string>
+    <string name="create_organization_description">Create a new organization to manage devices and users</string>
+    <string name="organization_name">Organization Name</string>
+    <string name="address">Address (Optional)</string>
+    <string name="create_organization_success">Organization %s created successfully!</string>
+    <string name="manage_organizations">Manage Organizations</string>
 </resources>

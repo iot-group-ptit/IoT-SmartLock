@@ -1,6 +1,7 @@
 package com.example.authenx.presentation.ui.auth.login
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,9 +10,11 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.example.authenx.BuildConfig
 import com.example.authenx.R
 import com.example.authenx.data.local.AuthManager
 import com.example.authenx.databinding.FragmentLoginBinding
+import com.example.authenx.service.SocketService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -56,9 +59,6 @@ class LoginFragment : Fragment() {
             btnLogin.setOnClickListener {
                 handleLogin()
             }
-            tvSignUp.setOnClickListener {
-                findNavController().navigate(R.id.action_loginFragment_to_registerFragment)
-            }
         }
     }
     
@@ -88,8 +88,7 @@ class LoginFragment : Fragment() {
                 if (response.success && response.token != null) {
                     // Save token and user info
                     authManager.saveToken(response.token)
-                    response.refreshToken?.let { authManager.saveRefreshToken(it) }
-                    
+
                     response.user?.let { user ->
                         authManager.saveUserInfo(
                             userId = user.id,
@@ -106,7 +105,11 @@ class LoginFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
 
-                    findNavController().navigate(R.id.action_loginFragment_to_nav_graph)
+                    // Start socket service for real-time notifications
+                    val serverUrl = BuildConfig.SERVER_URL
+                    SocketService.start(requireContext(), serverUrl, response.token)
+
+                    findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
                 } else {
                     Toast.makeText(
                         requireContext(),
@@ -122,6 +125,7 @@ class LoginFragment : Fragment() {
                     "Error: ${e.message}",
                     Toast.LENGTH_SHORT
                 ).show()
+                Log.d("LoginFragment", "Error: ${e.message}")
             }
         }
     }

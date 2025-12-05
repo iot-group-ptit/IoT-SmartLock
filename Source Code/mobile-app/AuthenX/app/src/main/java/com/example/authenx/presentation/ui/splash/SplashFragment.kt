@@ -49,7 +49,7 @@ class SplashFragment : Fragment() {
         if (token != null) {
             val serverUrl = BuildConfig.SERVER_URL
             SocketService.start(requireContext(), serverUrl, token)
-            findNavController().navigate(R.id.action_splashFragment_to_nav_graph)
+            findNavController().navigate(R.id.action_splashFragment_to_homeFragment)
         } else {
             findNavController().navigate(R.id.action_splashFragment_to_loginFragment)
         }

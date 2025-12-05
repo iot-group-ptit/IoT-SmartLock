@@ -127,11 +127,10 @@ class RegisterFragment : Fragment() {
             ).show()
             return
         }
-        
-        // Show loading
+
         showLoading(true)
         
-        // Call API
+        // Call API register
         lifecycleScope.launch {
             try {
                 val response = viewModel.register(
@@ -144,7 +143,6 @@ class RegisterFragment : Fragment() {
                 showLoading(false)
                 
                 if (response.success) {
-                    // Show success message
                     Toast.makeText(
                         requireContext(),
                         "Registration successful! Please login.",

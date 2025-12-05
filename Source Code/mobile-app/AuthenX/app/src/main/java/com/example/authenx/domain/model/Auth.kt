@@ -17,12 +17,14 @@ data class RegisterRequest(
 )
 
 data class AuthResponse(
-    val success: Boolean,
+    val code: Int,
     val message: String?,
     val token: String?,
-    val refreshToken: String?,
     val user: User?
-)
+) {
+    val success: Boolean
+        get() = code == 200
+}
 
 data class RefreshTokenRequest(
     val refreshToken: String

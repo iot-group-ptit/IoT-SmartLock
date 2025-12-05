@@ -3,8 +3,40 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/homeFragment">
+    app:startDestination="@id/splashFragment">
 
+    <!-- Auth Fragments -->
+    <fragment
+        android:id="@+id/splashFragment"
+        android:name="com.example.authenx.presentation.ui.splash.SplashFragment"
+        android:label="SplashFragment"
+        tools:layout="@layout/fragment_splash">
+        <action
+            android:id="@+id/action_splashFragment_to_loginFragment"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_splashFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.example.authenx.presentation.ui.auth.login.LoginFragment"
+        android:label="LoginFragment" >
+        <action
+            android:id="@+id/action_loginFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <!-- Main App Fragments -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.home.HomeFragment"
@@ -46,6 +78,13 @@
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
         <action
+            android:id="@+id/action_homeFragment_to_createOrganizationFragment"
+            app:destination="@id/createOrganizationFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
             android:id="@+id/action_homeFragment_to_loginFragment"
             app:destination="@id/loginFragment"
             app:enterAnim="@anim/slide_in_left"
@@ -70,13 +109,53 @@
     <fragment
         android:id="@+id/userManagementFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.user_management.UserManagementFragment"
-        android:label="UserManagementFragment" />
+        android:label="UserManagementFragment" >
+        <action
+            android:id="@+id/action_userManagementFragment_to_registerFragment"
+            app:destination="@id/registerFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_userManagementFragment_to_createUserFragment"
+            app:destination="@id/createUserFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/registerFragment"
+        android:name="com.example.authenx.presentation.ui.auth.register.RegisterFragment"
+        android:label="RegisterFragment" />
+        
+    <fragment
+        android:id="@+id/createUserFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.create_user.CreateUserFragment"
+        android:label="CreateUserFragment" >
+        <action
+            android:id="@+id/action_createUserFragment_to_enrollBiometricFragment"
+            app:destination="@id/enrollBiometricFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/enrollBiometricFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.enroll_biometric.EnrollBiometricFragment"
+        android:label="EnrollBiometricFragment" />
+        
+    <fragment
+        android:id="@+id/createOrganizationFragment"
+        android:name="com.example.authenx.presentation.ui.admin.create_organization.CreateOrganizationFragment"
+        android:label="CreateOrganizationFragment" />
+        
     <fragment
         android:id="@+id/firmwareUpdateFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.firmware_update.FirmwareUpdateFragment"
         android:label="FirmwareUpdateFragment" />
-    <fragment
-        android:id="@+id/loginFragment"
-        android:name="com.example.authenx.presentation.ui.auth.login.LoginFragment"
-        android:label="LoginFragment" />
 </navigation>

@@ -30,7 +30,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Quản lý người dùng"
+            android:text="@string/user_management"
             android:textColor="@color/white"
             android:textSize="20sp"
             android:fontFamily="@font/montserrat_semibold"
@@ -187,6 +187,34 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- FAB for Admin - Create user_manager -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAddManager"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:src="@drawable/add_24px"
+        android:contentDescription="Add Manager"
+        android:visibility="gone"
+        app:tint="@color/white"
+        app:backgroundTint="@color/secondary_color"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- FAB for user_manager - Create user -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAddUser"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:src="@drawable/add_24px"
+        android:contentDescription="Add User"
+        android:visibility="gone"
+        app:tint="@color/white"
+        app:backgroundTint="@color/primary_color"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
