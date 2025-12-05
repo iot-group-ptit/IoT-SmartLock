@@ -12,6 +12,7 @@ const logSchema = new mongoose.Schema(
         "app",
         "device_register",
         "device_provision_init",
+        "device_login",
       ],
       trim: true,
     },

@@ -222,15 +222,18 @@ class MQTTService {
         });
       }
 
-      // ✅ Kiểm tra device đã registered chưa
-      if (device.status !== "registered" || !device.certificate) {
-        console.log("✗ Device chưa registered");
+      if (!device.certificate) {
+        console.log("✗ Device chưa có certificate");
+        console.log("Status hiện tại:", device.status);
         return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
           device_id,
           success: false,
           reason: "Device not registered. Please complete provisioning first.",
         });
       }
+
+      console.log("✓ Device có certificate - Cho phép login");
+      console.log("Status trước khi login:", device.status);
 
       // ✅ Kiểm tra certificate còn hạn không (optional)
       if (
@@ -297,16 +300,48 @@ class MQTTService {
 
       console.log("✓ Signature hợp lệ!");
 
-      // ✅ Kiểm tra timestamp replay attack (không quá cũ)
-      const timestampAge = Date.now() - timestamp;
-      if (timestampAge > 5 * 60 * 1000) {
-        // 5 phút
-        console.log("✗ Timestamp quá cũ (possible replay attack)");
-        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
-          device_id,
-          success: false,
-          reason: "Timestamp too old",
-        });
+      // ✅ Kiểm tra timestamp dựa theo loại: epoch ms vs. device millis
+      const ts = Number(timestamp);
+      const isEpochMillis = ts > 1e12; // epoch ms thường >= 1,000,000,000,000
+
+      if (isEpochMillis) {
+        const timestampAge = Date.now() - ts;
+
+        // Không quá 5 phút trong quá khứ
+        if (timestampAge > 5 * 60 * 1000) {
+          console.log("✗ Timestamp quá cũ (possible replay attack)");
+          return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+            device_id,
+            success: false,
+            reason: "Timestamp too old",
+          });
+        }
+
+        // Không quá 1 phút trong tương lai
+        if (timestampAge < -60 * 1000) {
+          console.log("✗ Timestamp trong tương lai");
+          return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+            device_id,
+            success: false,
+            reason: "Invalid timestamp",
+          });
+        }
+      } else {
+        // Timestamp là millis() của thiết bị → không so với Date.now()
+        // Optional: chống replay đơn giản bằng cách ghi nhớ last timestamp theo device và yêu cầu tăng dần
+        const sessionInfo = this.deviceSessions.get(device_id);
+        if (
+          sessionInfo &&
+          typeof sessionInfo.last_device_timestamp === "number"
+        ) {
+          const lastTs = sessionInfo.last_device_timestamp;
+          // Cho phép timestamp tăng dần và khác biệt không quá lớn (ví dụ < 10 phút thiết bị)
+          if (ts < lastTs) {
+            console.log(
+              "⚠️ Timestamp thiết bị nhỏ hơn lần trước (có thể reboot) → vẫn chấp nhận."
+            );
+          }
+        }
       }
 
       // ✅ Tạo session token
@@ -318,6 +353,7 @@ class MQTTService {
         device_id: device_id,
         logged_in_at: new Date(),
         last_heartbeat: new Date(),
+        last_device_timestamp: ts,
         status: "online",
       });
 
@@ -328,15 +364,38 @@ class MQTTService {
 
       console.log("✓ Device đăng nhập thành công:", device_id);
       console.log("✓ Session token:", sessionToken.substring(0, 16) + "...");
+      console.log("✓ Status sau khi login:", device.status);
+      console.log("✓ Phương thức: X.509 Certificate Signature");
 
-      // ✅ Gửi response
-      this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+      //   // ✅ Gửi response
+      //   this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+      //     device_id,
+      //     success: true,
+      //     session_token: sessionToken,
+      //     message: "Login successful",
+      //     timestamp: new Date().toISOString(),
+      //     auth_method: "x509_signature",
+      //   });
+
+      // ✅ Gửi response (QUAN TRỌNG: Kiểm tra payload size)
+      const responsePayload = {
         device_id,
         success: true,
         session_token: sessionToken,
         message: "Login successful",
         timestamp: new Date().toISOString(),
-      });
+        auth_method: "x509_signature",
+      };
+
+      console.log("\n📤 Response payload:");
+      console.log(JSON.stringify(responsePayload));
+      console.log(
+        "📋 Payload size:",
+        JSON.stringify(responsePayload).length,
+        "bytes"
+      );
+
+      this.publish(this.topics.DEVICE_LOGIN_RESPONSE, responsePayload);
 
       // ✅ Log thành công
       await AccessLog.create({
@@ -352,6 +411,7 @@ class MQTTService {
           device_id,
           status: "online",
           logged_in_at: new Date(),
+          auth_method: "x509_signature",
         });
       }
 
@@ -460,14 +520,20 @@ class MQTTService {
         console.log(`✓ Removed expired session: ${device_id}`);
 
         // Cập nhật status trong database
-        await Device.findOneAndUpdate({ device_id }, { status: "offline" });
+        await Device.findOneAndUpdate(
+          { device_id },
+          {
+            last_seen: new Date(),
+          }
+        );
 
-        // Gửi thông báo lên app
+        // Gửi thông báo lên app (optional)
         if (global.io) {
           global.io.emit("device_status", {
             device_id,
-            status: "offline",
-            reason: "Session expired",
+            status: "session_expired",
+            reason: "No heartbeat received",
+            last_seen: new Date(),
           });
         }
       }
@@ -478,15 +544,57 @@ class MQTTService {
     }
   }
 
+  // ✅ THÊM: Hàm kiểm tra device status (để debug)
+  async checkDeviceStatus(device_id) {
+    const device = await Device.findOne({ device_id });
+
+    if (!device) {
+      console.log(`Device ${device_id} không tồn tại`);
+      return null;
+    }
+
+    console.log("\n📊 DEVICE STATUS:");
+    console.log("Device ID:", device.device_id);
+    console.log("Status:", device.status);
+    console.log("Has certificate:", !!device.certificate);
+    console.log("Has public_key:", !!device.public_key);
+    console.log("Last seen:", device.last_seen);
+    console.log("Created at:", device.createdAt);
+
+    const session = this.deviceSessions.get(device_id);
+    if (session) {
+      console.log("\n💾 SESSION INFO:");
+      console.log(
+        "Session token:",
+        session.session_token.substring(0, 16) + "..."
+      );
+      console.log("Logged in:", session.logged_in_at);
+      console.log("Last heartbeat:", session.last_heartbeat);
+      console.log("Status:", session.status);
+    } else {
+      console.log("\n💾 SESSION: None");
+    }
+
+    return device;
+  }
+
   verifyDeviceSession(device_id, session_token) {
     const session = this.deviceSessions.get(device_id);
 
     if (!session) {
-      return { valid: false, reason: "Session not found" };
+      console.log(`⚠️ Device ${device_id} không có session`);
+      return {
+        valid: false,
+        reason: "Session not found. Please login.",
+      };
     }
 
     if (session.session_token !== session_token) {
-      return { valid: false, reason: "Invalid session token" };
+      console.log(`✗ Session token không hợp lệ cho ${device_id}`);
+      return {
+        valid: false,
+        reason: "Invalid session token",
+      };
     }
 
     // Kiểm tra timeout
@@ -494,10 +602,46 @@ class MQTTService {
       Date.now() - new Date(session.last_heartbeat).getTime();
     if (timeSinceHeartbeat > this.SESSION_TIMEOUT) {
       this.deviceSessions.delete(device_id);
-      return { valid: false, reason: "Session expired" };
+      console.log(`⏱️ Session expired cho ${device_id}`);
+      return {
+        valid: false,
+        reason: "Session expired",
+      };
     }
 
     return { valid: true, session };
+  }
+
+  async handleUnlockRequest(data) {
+    const { device_id, session_token, user_id } = data;
+
+    // ✅ Verify session
+    const verification = await this.verifyDeviceSession(
+      device_id,
+      session_token
+    );
+
+    if (!verification.valid) {
+      console.log("✗ Unlock denied:", verification.reason);
+
+      // Yêu cầu login lại
+      this.publish(`smartlock/device/${device_id}/reauth`, {
+        device_id,
+        reason: verification.reason,
+      });
+
+      return;
+    }
+
+    // ✅ Session hợp lệ → Gửi lệnh unlock
+    this.publish(this.topics.UNLOCK, {
+      action: "unlock",
+      method: "remote",
+      user_id: user_id,
+      timestamp: new Date().toISOString(),
+    });
+
+    console.log(`✓ Unlock command sent to ${device_id}`);
   }
 
   // --- HÀM LƯU ACCESS LOG ---
