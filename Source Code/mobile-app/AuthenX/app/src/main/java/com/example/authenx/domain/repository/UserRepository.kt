@@ -1,5 +1,7 @@
 package com.example.authenx.domain.repository
 
+import com.example.authenx.domain.model.CreateUserRequest
+import com.example.authenx.domain.model.CreateUserResponse
 import com.example.authenx.domain.model.User
 import kotlinx.coroutines.flow.Flow
 
@@ -8,4 +10,5 @@ interface UserRepository {
     suspend fun getUserById(userId: String): User?
     suspend fun deleteUser(userId: String): Boolean
     suspend fun updateUser(user: User): Boolean
+    suspend fun createUser(request: CreateUserRequest): CreateUserResponse
 }

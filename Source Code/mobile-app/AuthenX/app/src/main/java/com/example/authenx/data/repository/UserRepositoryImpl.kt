@@ -3,6 +3,8 @@ package com.example.authenx.data.repository
 import com.example.authenx.data.local.AuthManager
 import com.example.authenx.data.remote.socket.SocketManager
 import com.example.authenx.data.remote.source.UserDataSource
+import com.example.authenx.domain.model.CreateUserRequest
+import com.example.authenx.domain.model.CreateUserResponse
 import com.example.authenx.domain.model.User
 import com.example.authenx.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
@@ -22,8 +24,7 @@ class UserRepositoryImpl @Inject constructor(
             emit(emptyList())
             return@flow
         }
-        
-        // Initial fetch
+    
         try {
             val response = userDataSource.getAllUsers(token)
             if (response.success && response.data?.users != null) {
@@ -33,9 +34,7 @@ class UserRepositoryImpl @Inject constructor(
             // Ignore initial error
         }
         
-        // Listen to real-time updates
         socketManager.onUserChanged().collect {
-            // Refetch users when any user event occurs
             try {
                 val response = userDataSource.getAllUsers(token)
                 if (response.success && response.data?.users != null) {
@@ -46,7 +45,6 @@ class UserRepositoryImpl @Inject constructor(
             }
         }
     }.onStart {
-        // Connect socket when flow starts
         val token = authManager.getToken()
         if (!token.isNullOrEmpty() && !socketManager.isConnected()) {
             val baseUrl = com.example.authenx.BuildConfig.API_BASE_URL.replace("/api", "")
@@ -81,5 +79,10 @@ class UserRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             false
         }
+    }
+    
+    override suspend fun createUser(request: CreateUserRequest): CreateUserResponse {
+        val token = authManager.getToken() ?: throw Exception("No token found")
+        return userDataSource.createUser(token, request)
     }
 }

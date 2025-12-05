@@ -96,5 +96,55 @@ class SocketManager @Inject constructor() {
         }
     }
     
+    fun onDoorUnlocked(): Flow<JSONObject?> = callbackFlow {
+        val listener: (Array<Any>) -> Unit = { args ->
+            try {
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    trySend(args[0] as JSONObject)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing door unlock event", e)
+            }
+        }
+        
+        socket?.on("door_unlocked", listener)
+        
+        awaitClose {
+            socket?.off("door_unlocked", listener)
+        }
+    }
+    
+    fun onFingerprintEnrolled(): Flow<FingerprintEnrollEvent> = callbackFlow {
+        val listener: (Array<Any>) -> Unit = { args ->
+            try {
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    val json = args[0] as JSONObject
+                    val event = FingerprintEnrollEvent(
+                        userId = json.optString("user_id"),
+                        fingerprintId = json.optInt("fingerprint_id"),
+                        success = json.optBoolean("success", false),
+                        message = json.optString("message")
+                    )
+                    trySend(event)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing fingerprint enroll event", e)
+            }
+        }
+        
+        socket?.on("fingerprint_enrolled", listener)
+        
+        awaitClose {
+            socket?.off("fingerprint_enrolled", listener)
+        }
+    }
+    
     fun isConnected(): Boolean = socket?.connected() ?: false
 }
+
+data class FingerprintEnrollEvent(
+    val userId: String,
+    val fingerprintId: Int,
+    val success: Boolean,
+    val message: String?
+)

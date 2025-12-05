@@ -7,14 +7,20 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.authenx.R
+import com.example.authenx.data.local.AuthManager
 import com.example.authenx.databinding.FragmentHomeBinding
+import com.example.authenx.service.SocketService
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+    
+    @Inject
+    lateinit var authManager: AuthManager
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -27,7 +33,51 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupRoleBasedUI()
         setOnClickListener()
+    }
+    
+    private fun setupRoleBasedUI() {
+        val userRole = authManager.getUserRole()
+        
+        when (userRole) {
+            "admin" -> setupAdminUI()
+            "user_manager" -> setupUserManagerUI()
+            else -> setupDefaultUI()
+        }
+    }
+    
+    private fun setupAdminUI() {
+        // Admin can see everything
+        binding.btnScanFace.visibility = View.VISIBLE
+        binding.btnRegisterFace.visibility = View.VISIBLE
+        binding.btnRegisterFingerPrint.visibility = View.VISIBLE
+        binding.btnStatistic.visibility = View.VISIBLE
+        binding.btnManageUsers.visibility = View.VISIBLE
+        binding.btnCreateOrganization.visibility = View.VISIBLE
+        binding.btnUpdate.visibility = View.VISIBLE
+    }
+    
+    private fun setupUserManagerUI() {
+        // user_manager can manage users, view statistics, enroll biometrics
+        binding.btnScanFace.visibility = View.VISIBLE
+        binding.btnRegisterFace.visibility = View.VISIBLE
+        binding.btnRegisterFingerPrint.visibility = View.VISIBLE
+        binding.btnStatistic.visibility = View.VISIBLE
+        binding.btnManageUsers.visibility = View.VISIBLE
+        binding.btnCreateOrganization.visibility = View.GONE // Admin only
+        binding.btnUpdate.visibility = View.VISIBLE
+    }
+    
+    private fun setupDefaultUI() {
+        // Default user - minimal access
+        binding.btnScanFace.visibility = View.VISIBLE
+        binding.btnRegisterFace.visibility = View.GONE
+        binding.btnRegisterFingerPrint.visibility = View.GONE
+        binding.btnStatistic.visibility = View.GONE
+        binding.btnManageUsers.visibility = View.GONE
+        binding.btnCreateOrganization.visibility = View.GONE
+        binding.btnUpdate.visibility = View.GONE
     }
 
     private fun setOnClickListener() {
@@ -47,6 +97,9 @@ class HomeFragment : Fragment() {
             btnManageUsers.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_userManagementFragment)
             }
+            btnCreateOrganization.setOnClickListener {
+                findNavController().navigate(R.id.action_homeFragment_to_createOrganizationFragment)
+            }
             btnUpdate.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_firmwareUpdateFragment)
             }
@@ -57,13 +110,15 @@ class HomeFragment : Fragment() {
     }
 
     private fun logout() {
+        SocketService.stop(requireContext())
+        
         val sharedPref = requireActivity().getSharedPreferences("auth_prefs", android.content.Context.MODE_PRIVATE)
         sharedPref.edit().apply {
             remove("auth_token")
             remove("user_id")
             apply()
         }
-        findNavController().navigate(R.id.action_homeFragment_to_auth_graph)
+        findNavController().navigate(R.id.action_homeFragment_to_loginFragment)
     }
 
     override fun onDestroyView() {

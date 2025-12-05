@@ -3,15 +3,21 @@ package com.example.authenx.di
 import com.example.authenx.data.local.AuthManager
 import com.example.authenx.data.remote.socket.SocketManager
 import com.example.authenx.data.repository.AuthRepositoryImpl
+import com.example.authenx.data.repository.BiometricRepositoryImpl
 import com.example.authenx.data.repository.FaceRecognitionRepositoryImpl
+import com.example.authenx.data.repository.OrganizationRepositoryImpl
 import com.example.authenx.data.repository.StatisticsRepositoryImpl
 import com.example.authenx.data.repository.UserRepositoryImpl
 import com.example.authenx.data.remote.source.AuthDataSource
+import com.example.authenx.data.remote.source.BiometricDataSource
 import com.example.authenx.data.remote.source.FaceRecognitionDataSource
+import com.example.authenx.data.remote.source.OrganizationDataSource
 import com.example.authenx.data.remote.source.StatisticsDataSource
 import com.example.authenx.data.remote.source.UserDataSource
 import com.example.authenx.domain.repository.AuthRepository
+import com.example.authenx.domain.repository.BiometricRepository
 import com.example.authenx.domain.repository.FaceRecognitionRepository
+import com.example.authenx.domain.repository.OrganizationRepository
 import com.example.authenx.domain.repository.StatisticsRepository
 import com.example.authenx.domain.repository.UserRepository
 import dagger.Module
@@ -55,5 +61,21 @@ object RepositoryModule {
         faceRecognitionDataSource: FaceRecognitionDataSource
     ): FaceRecognitionRepository {
         return FaceRecognitionRepositoryImpl(faceRecognitionDataSource)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideBiometricRepository(
+        biometricDataSource: BiometricDataSource
+    ): BiometricRepository {
+        return BiometricRepositoryImpl(biometricDataSource)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideOrganizationRepository(
+        organizationDataSource: OrganizationDataSource
+    ): OrganizationRepository {
+        return OrganizationRepositoryImpl(organizationDataSource)
     }
 }

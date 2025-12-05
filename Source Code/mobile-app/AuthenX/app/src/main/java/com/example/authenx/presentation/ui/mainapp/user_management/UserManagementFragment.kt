@@ -15,10 +15,12 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.authenx.R
+import com.example.authenx.data.local.AuthManager
 import com.example.authenx.databinding.FragmentUserManagementBinding
 import com.example.authenx.domain.model.User
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class UserManagementFragment : Fragment() {
@@ -28,6 +30,9 @@ class UserManagementFragment : Fragment() {
     
     private val viewModel: UserManagementViewModel by viewModels()
     private lateinit var userAdapter: UserAdapter
+    
+    @Inject
+    lateinit var authManager: AuthManager
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -44,6 +49,28 @@ class UserManagementFragment : Fragment() {
         setupSearchAndFilters()
         setOnClickListener()
         observeUiState()
+        checkAdminPermission()
+    }
+    
+    private fun checkAdminPermission() {
+        val userRole = authManager.getUserRole()
+        when (userRole) {
+            "admin" -> {
+                binding.fabAddManager.visibility = View.VISIBLE
+                binding.fabAddUser.visibility = View.GONE
+                binding.tvTitle.text = getString(R.string.manage_user_managers)
+            }
+            "user_manager" -> {
+                binding.fabAddUser.visibility = View.VISIBLE
+                binding.fabAddManager.visibility = View.GONE
+                binding.tvTitle.text = getString(R.string.manage_users)
+            }
+            else -> {
+                binding.fabAddManager.visibility = View.GONE
+                binding.fabAddUser.visibility = View.GONE
+                binding.tvTitle.text = getString(R.string.user_management)
+            }
+        }
     }
     
     private fun setupRecyclerView() {
@@ -53,7 +80,6 @@ class UserManagementFragment : Fragment() {
             },
             onEditClick = { user ->
                 Toast.makeText(requireContext(), "Edit: ${user.fullName}", Toast.LENGTH_SHORT).show()
-                // TODO: Navigate to edit user screen
             },
             onDeleteClick = { user ->
                 showDeleteConfirmDialog(user)
@@ -117,7 +143,7 @@ class UserManagementFragment : Fragment() {
         userAdapter.submitList(state.filteredUsers)
         
         // Update user count
-        binding.tvUserCount.text = "Total: ${state.filteredUsers.size} users"
+        binding.tvUserCount.text = getString(R.string.total_users, state.filteredUsers.size)
         
         // Show/hide empty state
         binding.layoutEmptyState.visibility = 
@@ -134,6 +160,16 @@ class UserManagementFragment : Fragment() {
     private fun setOnClickListener() {
         binding.btnBack.setOnClickListener {
             findNavController().popBackStack()
+        }
+        
+        // Admin tạo user_manager (email + password)
+        binding.fabAddManager.setOnClickListener {
+            findNavController().navigate(R.id.action_userManagementFragment_to_registerFragment)
+        }
+        
+        // user_manager tạo user (tên + SĐT)
+        binding.fabAddUser.setOnClickListener {
+            findNavController().navigate(R.id.action_userManagementFragment_to_createUserFragment)
         }
     }
 
