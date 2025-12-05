@@ -2,32 +2,54 @@ package com.example.authenx.presentation.ui.mainapp.face_authen
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.os.Bundle
+import android.util.Base64
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.example.authenx.databinding.FragmentFaceAuthenBinding
+import com.example.authenx.domain.model.FaceRecognitionState
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 
 @AndroidEntryPoint
 class FaceAuthenFragment : Fragment() {
 
     private var _binding: FragmentFaceAuthenBinding? = null
     private val binding get() = _binding!!
+    private val viewModel: FaceAuthenViewModel by viewModels()
+    
+    private var imageCapture: ImageCapture? = null
 
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) startCamera()
-        else Log.e("FaceAuthen", "Camera permission denied")
+        else {
+            Toast.makeText(requireContext(), "Cần cấp quyền camera", Toast.LENGTH_SHORT).show()
+            findNavController().popBackStack()
+        }
     }
 
     override fun onCreateView(
@@ -40,13 +62,67 @@ class FaceAuthenFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setOnClickListener()
+        setupClickListeners()
+        observeUiState()
         checkCameraPermissionAndStart()
     }
 
-    private fun setOnClickListener() {
+    private fun setupClickListeners() {
         binding.btnCancel.setOnClickListener {
             findNavController().popBackStack()
+        }
+        
+        binding.btnCapture.setOnClickListener {
+            val state = viewModel.uiState.value.state
+            when (state) {
+                FaceRecognitionState.IDLE -> {
+                    viewModel.capturePressed()
+                    captureImage { base64 ->
+                        Log.d("BASE_64 IMAGE", base64)
+                        saveBase64ToFile(base64, "face_front.jpg")
+                        viewModel.processFrontFace(base64)
+                    }
+                }
+                FaceRecognitionState.WAITING_ACTION -> {
+                    viewModel.capturePressed()
+                    captureImage { base64 ->
+                        saveBase64ToFile(base64, "face_action.jpg")
+                        viewModel.processActionFace(base64)
+                    }
+                }
+                FaceRecognitionState.ERROR -> {
+                    viewModel.reset()
+                }
+                else -> {}
+            }
+        }
+    }
+    
+    private fun observeUiState() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    updateUI(state)
+                }
+            }
+        }
+    }
+    
+    private fun updateUI(state: FaceAuthenUiState) {
+        binding.tvInstruction.text = state.instruction
+        binding.progressProcessing.isVisible = state.isLoading
+        binding.btnCapture.isEnabled = !state.isLoading
+        
+        // Handle success - call unlock API
+        if (state.isUnlockSuccess) {
+            Toast.makeText(requireContext(), "Mở khóa thành công!", Toast.LENGTH_SHORT).show()
+            // TODO: Call unlock API here
+            findNavController().popBackStack()
+        }
+        
+        // Handle error
+        state.error?.let { error ->
+            Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -62,7 +138,7 @@ class FaceAuthenFragment : Fragment() {
     }
 
     private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.Companion.getInstance(requireContext())
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
 
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
@@ -70,6 +146,10 @@ class FaceAuthenFragment : Fragment() {
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(binding.previewView.surfaceProvider)
             }
+            
+            imageCapture = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                .build()
 
             val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
@@ -78,13 +158,68 @@ class FaceAuthenFragment : Fragment() {
                 cameraProvider.bindToLifecycle(
                     viewLifecycleOwner,
                     cameraSelector,
-                    preview
+                    preview,
+                    imageCapture
                 )
             } catch (exc: Exception) {
                 Log.e("FaceAuthen", "Camera start failed: ", exc)
             }
 
         }, ContextCompat.getMainExecutor(requireContext()))
+    }
+    
+    private fun captureImage(onImageCaptured: (String) -> Unit) {
+        val imageCapture = imageCapture ?: return
+        
+        imageCapture.takePicture(
+            ContextCompat.getMainExecutor(requireContext()),
+            object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    val base64 = imageProxyToBase64(image)
+                    image.close()
+                    onImageCaptured(base64)
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    Log.e("FaceAuthen", "Image capture failed", exception)
+                    Toast.makeText(requireContext(), "Lỗi chụp ảnh", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+    }
+    
+    private fun imageProxyToBase64(image: ImageProxy): String {
+        // Get image bytes directly from first plane
+        val buffer = image.planes[0].buffer
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        
+        // Encode to base64 - simple and direct
+        val base64String = Base64.encodeToString(bytes, Base64.NO_WRAP)
+        
+        Log.d("FaceAuthen", "Image format: ${image.format}, Base64 length: ${base64String.length}")
+        
+        return base64String
+    }
+    
+    private fun saveBase64ToFile(base64String: String, fileName: String) {
+        try {
+            // Decode base64 to bytes
+            val imageBytes = Base64.decode(base64String, Base64.NO_WRAP)
+            
+            // Save to app's Pictures directory
+            val picturesDir = requireContext().getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+            val imageFile = java.io.File(picturesDir, fileName)
+            
+            java.io.FileOutputStream(imageFile).use { fos ->
+                fos.write(imageBytes)
+            }
+            
+            Log.d("FaceAuthen", "✅ Image saved to: ${imageFile.absolutePath}")
+            Toast.makeText(requireContext(), "Saved: ${imageFile.name}", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("FaceAuthen", "❌ Failed to save image", e)
+        }
     }
 
     override fun onDestroyView() {

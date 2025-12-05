@@ -26,7 +26,12 @@ android {
             localPropertiesFile.inputStream().use { properties.load(it) }
         }
         val apiBaseUrl = properties.getProperty("api.base.url") ?: "http://10.0.2.2:5000/api"
+        val faceRecognitionBaseUrl = properties.getProperty("face.recognition.base.url") ?: "http://10.0.2.2:8000"
+        val serverURL = properties.getProperty("server.url") ?: "http://10.0.2.2:5000"
+
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+        buildConfigField("String", "FACE_RECOGNITION_BASE_URL", "\"$faceRecognitionBaseUrl\"")
+        buildConfigField("String", "SERVER_URL", "\"$serverURL\"")
     }
 
     buildFeatures {
