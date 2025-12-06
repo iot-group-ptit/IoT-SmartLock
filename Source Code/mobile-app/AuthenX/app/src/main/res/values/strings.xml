@@ -79,6 +79,7 @@
     <string name="enroll_fingerprint">Enroll Fingerprint</string>
     <string name="user_label">User: %s</string>
     <string name="fingerprint_id_label">Fingerprint ID: %d</string>
+    <string name="card_uid_label">Card UID: %s</string>
     <string name="start_enrollment">Start Enrollment</string>
     <string name="done">Done</string>
     <string name="sending_command">Sending enrollment command to device...</string>
@@ -99,4 +100,32 @@
     <string name="place_fingerprint_on_the_sensor">Place fingerprint on the sensor</string>
     <string name="edit">Edit</string>
     <string name="delete">Delete</string>
+
+    <!-- Device Management -->
+    <string name="device_management">Device Management</string>
+    <string name="my_devices">My Devices</string>
+    <string name="register_device">Register Device</string>
+    <string name="device_list">Device List</string>
+    <string name="device_detail">Device Detail</string>
+    <string name="device_id">Device ID</string>
+    <string name="device_type">Device Type</string>
+    <string name="device_model">Device Model</string>
+    <string name="organization_id">Organization ID</string>
+    <string name="status">Status</string>
+    <string name="created_at">Created At</string>
+    <string name="last_active">Last Active</string>
+    <string name="no_devices_found">No devices found</string>
+    <string name="actions">Actions</string>
+    <string name="enroll_rfid">Enroll RFID</string>
+    <string name="view_logs">View Logs</string>
+    <string name="loading_devices">Loading devices...</string>
+    <string name="refresh_devices">Refresh devices</string>
+    <string name="manage_devices">Manage Devices</string>
+    <string name="register_new_device">Register New Device</string>
+    <string name="device_will_be_registered_as_smart_lock_esp32_v1_to_your_organization_automatically">Device will be registered as Smart Lock (ESP32_v1) to your organization automatically.</string>
+    <string name="try_adjusting_your_search">Try adjusting your search</string>
+    <string name="user_example_com">user@example.com</string>
+    <string name="user">User</string>
+    <string name="user_name">User name</string>
+    <string name="please_scan_your_rfid_card_on_the_reader">Please scan your RFID card on the reader</string>
 </resources>

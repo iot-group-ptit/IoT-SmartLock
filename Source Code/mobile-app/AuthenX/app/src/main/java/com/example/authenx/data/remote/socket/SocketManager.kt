@@ -139,12 +139,44 @@ class SocketManager @Inject constructor() {
         }
     }
     
+    fun onRfidEnrolled(): Flow<RfidEnrollEvent> = callbackFlow {
+        val listener: (Array<Any>) -> Unit = { args ->
+            try {
+                if (args.isNotEmpty() && args[0] is JSONObject) {
+                    val json = args[0] as JSONObject
+                    val event = RfidEnrollEvent(
+                        userId = json.optString("userId"),
+                        cardUid = json.optString("cardUid"),
+                        success = json.optBoolean("success", false),
+                        message = json.optString("message")
+                    )
+                    trySend(event)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing RFID enroll event", e)
+            }
+        }
+        
+        socket?.on("rfid_enroll_result", listener)
+        
+        awaitClose {
+            socket?.off("rfid_enroll_result", listener)
+        }
+    }
+    
     fun isConnected(): Boolean = socket?.connected() ?: false
 }
 
 data class FingerprintEnrollEvent(
     val userId: String,
     val fingerprintId: Int,
+    val success: Boolean,
+    val message: String?
+)
+
+data class RfidEnrollEvent(
+    val userId: String,
+    val cardUid: String?,
     val success: Boolean,
     val message: String?
 )

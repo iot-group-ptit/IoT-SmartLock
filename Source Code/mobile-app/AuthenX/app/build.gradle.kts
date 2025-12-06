@@ -101,4 +101,7 @@ dependencies {
 
     // Socket.IO for real-time communication
     implementation("io.socket:socket.io-client:2.1.0")
+
+    // SwipeRefreshLayout
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }

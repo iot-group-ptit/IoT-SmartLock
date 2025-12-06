@@ -8,18 +8,21 @@ import com.example.authenx.data.repository.FaceRecognitionRepositoryImpl
 import com.example.authenx.data.repository.OrganizationRepositoryImpl
 import com.example.authenx.data.repository.StatisticsRepositoryImpl
 import com.example.authenx.data.repository.UserRepositoryImpl
+import com.example.authenx.data.repository.DeviceRepositoryImpl
 import com.example.authenx.data.remote.source.AuthDataSource
 import com.example.authenx.data.remote.source.BiometricDataSource
 import com.example.authenx.data.remote.source.FaceRecognitionDataSource
 import com.example.authenx.data.remote.source.OrganizationDataSource
 import com.example.authenx.data.remote.source.StatisticsDataSource
 import com.example.authenx.data.remote.source.UserDataSource
+import com.example.authenx.data.remote.source.DeviceDataSource
 import com.example.authenx.domain.repository.AuthRepository
 import com.example.authenx.domain.repository.BiometricRepository
 import com.example.authenx.domain.repository.FaceRecognitionRepository
 import com.example.authenx.domain.repository.OrganizationRepository
 import com.example.authenx.domain.repository.StatisticsRepository
 import com.example.authenx.domain.repository.UserRepository
+import com.example.authenx.domain.repository.DeviceRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -77,5 +80,13 @@ object RepositoryModule {
         organizationDataSource: OrganizationDataSource
     ): OrganizationRepository {
         return OrganizationRepositoryImpl(organizationDataSource)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideDeviceRepository(
+        deviceDataSource: DeviceDataSource
+    ): DeviceRepository {
+        return DeviceRepositoryImpl(deviceDataSource)
     }
 }

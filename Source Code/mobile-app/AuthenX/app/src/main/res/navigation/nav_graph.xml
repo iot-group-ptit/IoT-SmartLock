@@ -84,6 +84,13 @@
             app:exitAnim="@anim/slide_out_right"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_homeFragment_to_deviceListFragment"
+            app:destination="@id/deviceListFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
     <fragment
         android:id="@+id/faceAuthenFragment"
@@ -120,6 +127,96 @@
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
     </fragment>
+
+    <fragment
+        android:id="@+id/deviceListFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.device_list.DeviceListFragment"
+        android:label="DeviceListFragment"
+        tools:layout="@layout/fragment_device_list" >
+        <action
+            android:id="@+id/action_deviceListFragment_to_deviceDetailFragment"
+            app:destination="@id/deviceDetailFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_deviceListFragment_to_registerDeviceFragment"
+            app:destination="@id/registerDeviceFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/registerDeviceFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.device.RegisterDeviceFragment"
+        android:label="RegisterDeviceFragment"
+        tools:layout="@layout/fragment_register_device" />
+
+    <fragment
+        android:id="@+id/deviceDetailFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.device.DeviceDetailFragment"
+        android:label="DeviceDetailFragment"
+        tools:layout="@layout/fragment_device_detail" >
+        <action
+            android:id="@+id/action_deviceDetailFragment_to_selectUserFragment"
+            app:destination="@id/selectUserFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_deviceDetailFragment_to_selectUserForRfidFragment"
+            app:destination="@id/selectUserForRfidFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/selectUserFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.select_user.SelectUserFragment"
+        android:label="SelectUserFragment"
+        tools:layout="@layout/fragment_select_user" >
+        <argument
+            android:name="deviceId"
+            app:argType="string"
+            app:nullable="true" />
+        <action
+            android:id="@+id/action_selectUserFragment_to_enrollBiometricFragment"
+            app:destination="@id/enrollBiometricFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/selectUserForRfidFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.select_user.SelectUserFragment"
+        android:label="SelectUserFragment"
+        tools:layout="@layout/fragment_select_user" >
+        <argument
+            android:name="deviceId"
+            app:argType="string"
+            app:nullable="true" />
+        <action
+            android:id="@+id/action_selectUserForRfidFragment_to_enrollRfidFragment"
+            app:destination="@id/enrollRfidFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/enrollRfidFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.enroll_rfid.EnrollRfidFragment"
+        android:label="EnrollRfidFragment"
+        tools:layout="@layout/fragment_enroll_rfid" />
 
     <fragment
         android:id="@+id/registerFragment"

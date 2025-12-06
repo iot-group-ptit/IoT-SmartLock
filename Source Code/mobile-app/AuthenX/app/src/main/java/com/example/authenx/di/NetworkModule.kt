@@ -3,6 +3,7 @@ package com.example.authenx.di
 import com.example.authenx.data.local.AuthManager
 import com.example.authenx.data.remote.ApiService
 import com.example.authenx.data.remote.source.AuthDataSource
+import com.example.authenx.data.remote.source.DeviceDataSource
 import com.example.authenx.data.remote.source.FaceRecognitionDataSource
 import com.example.authenx.data.remote.source.OrganizationDataSource
 import dagger.Module
@@ -71,5 +72,11 @@ object NetworkModule {
     @Singleton
     fun provideOrganizationDataSource(client: HttpClient, authManager: AuthManager): OrganizationDataSource {
         return OrganizationDataSource(client, authManager)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideDeviceDataSource(client: HttpClient, authManager: AuthManager): DeviceDataSource {
+        return DeviceDataSource(client, authManager)
     }
 }
