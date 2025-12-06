@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/transparent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context=".presentation.ui.HomeFragment">
+
+    <ImageView
+        android:id="@+id/btnUpdate"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:src="@drawable/download"
+        app:tint="@color/secondary_color"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <TextView
+        android:id="@+id/tvAppName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/authenx"
+        android:textSize="48sp"
+        android:textColor="@color/primary_color"
+        android:fontFamily="@font/montserrat_semibold"
+        app:layout_constraintVertical_bias="0.1"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+    <Button
+        android:id="@+id/btnScanFace"
+        android:layout_width="132dp"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:textSize="18sp"
+        android:text="@string/scan_face"
+        android:backgroundTint="@color/secondary_color"
+        android:layout_marginTop="48dp"
+        app:layout_constraintTop_toBottomOf="@id/tvAppName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <Button
+        android:id="@+id/btnRegisterFace"
+        android:layout_width="196dp"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:textSize="18sp"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toBottomOf="@id/btnScanFace"
+        android:text="@string/register_face"
+        android:backgroundTint="@color/secondary_color"
+        app:layout_constraintStart_toStartOf="@id/btnScanFace"
+        app:layout_constraintEnd_toEndOf="@id/btnScanFace"/>
+
+    <Button
+        android:id="@+id/btnScanFingerprint"
+        android:layout_width="196dp"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@id/btnRegisterFace"
+        android:text="@string/scan_fingerprint"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@color/secondary_color"
+        app:layout_constraintStart_toStartOf="@id/btnScanFace"
+        app:layout_constraintEnd_toEndOf="@id/btnScanFace"/>
+
+    <Button
+        android:id="@+id/btnRegisterFingerPrint"
+        android:layout_width="196dp"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@id/btnScanFingerprint"
+        android:text="@string/register_fingerprint"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@color/secondary_color"
+        app:layout_constraintStart_toStartOf="@id/btnScanFingerprint"
+        app:layout_constraintEnd_toEndOf="@id/btnScanFingerprint"/>
+
+    <Button
+        android:id="@+id/btnStatistic"
+        android:layout_width="196dp"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@id/btnRegisterFingerPrint"
+        android:text="@string/go_to_statistics"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@color/secondary_color"
+        app:layout_constraintStart_toStartOf="@id/btnScanFingerprint"
+        app:layout_constraintEnd_toEndOf="@id/btnScanFingerprint"/>
+
+    <Button
+        android:id="@+id/btnManageUsers"
+        android:layout_width="196dp"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@id/btnStatistic"
+        android:text="@string/manage_users"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@color/secondary_color"
+        app:layout_constraintStart_toStartOf="@id/btnScanFingerprint"
+        app:layout_constraintEnd_toEndOf="@id/btnScanFingerprint"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
