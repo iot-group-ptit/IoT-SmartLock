@@ -89,12 +89,11 @@ class SecurityAlertService {
       }
 
       // 2. Tìm user_manager quản lý thiết bị này (qua org_id)
-      const managers = await User.find({
-        org_id: device.org_id,
-        role: "user_manager",
-      }).select("_id fullName email");
+      const manager = await User.findById(device.user_id).select(
+        "_id fullName email"
+      );
 
-      if (!managers || managers.length === 0) {
+      if (!manager) {
         console.log("⚠️ Không tìm thấy user_manager để gửi cảnh báo");
         return;
       }
@@ -139,43 +138,39 @@ class SecurityAlertService {
       // 6. ✅ LƯU NOTIFICATION VÀO DATABASE cho từng user_manager
       const savedNotifications = [];
 
-      for (const manager of managers) {
-        const notification = await Notification.create({
-          user_id: manager._id.toString(),
-          notification_type: "security_alert", // Loại: cảnh báo bảo mật
-          title: alertTitle,
-          message: alertMessage,
-          is_read: false,
-          created_at: new Date(),
-          // ✅ Lưu thêm metadata để sau này query dễ dàng
-          metadata: {
-            deviceId: deviceId,
-            deviceName: device.type || "Smart Lock",
-            failedAttempts: failedCount,
-            severity: "high",
-            alertPayload: JSON.stringify(alertPayload), // Lưu full payload
-          },
-        });
+      const notification = await Notification.create({
+        user_id: manager._id.toString(),
+        notification_type: "security_alert", // Loại: cảnh báo bảo mật
+        title: alertTitle,
+        message: alertMessage,
+        is_read: false,
+        created_at: new Date(),
+        // ✅ Lưu thêm metadata để sau này query dễ dàng
+        metadata: {
+          deviceId: deviceId,
+          deviceName: device.type || "Smart Lock",
+          failedAttempts: failedCount,
+          severity: "high",
+          alertPayload: JSON.stringify(alertPayload), // Lưu full payload
+        },
+      });
 
-        savedNotifications.push(notification);
-        console.log(
-          `✅ Đã lưu notification ${notification.id} cho user_manager: ${manager.fullName}`
-        );
-      }
+      savedNotifications.push(notification);
+      console.log(
+        `✅ Đã lưu notification ${notification.id} cho user_manager: ${manager.fullName}`
+      );
 
       // 7. Gửi cảnh báo realtime qua Socket.IO
       if (global.io) {
-        managers.forEach((manager) => {
-          global.io.to(`user_${manager._id}`).emit("security_alert", {
-            ...alertPayload,
-            notificationId: savedNotifications.find(
-              (n) => n.user_id === manager._id.toString()
-            )?.id,
-          });
-          console.log(
-            `📤 Đã gửi realtime alert đến user_manager: ${manager.fullName}`
-          );
+        global.io.to(`user_${manager._id}`).emit("security_alert", {
+          ...alertPayload,
+          notificationId: savedNotifications.find(
+            (n) => n.user_id === manager._id.toString()
+          )?.id,
         });
+        console.log(
+          `📤 Đã gửi realtime alert đến user_manager: ${manager.fullName}`
+        );
       } else {
         console.log("⚠️ Socket.IO chưa được khởi tạo");
       }

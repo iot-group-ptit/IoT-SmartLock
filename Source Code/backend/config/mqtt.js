@@ -31,6 +31,7 @@ class MQTTService {
       CONTROL: "smartlock/control",
       UNLOCK: "smartlock/control/unlock",
       LOCK: "smartlock/control/lock",
+      FACE_UNLOCK: "smartlock/sensor/face/unlock",
       ENROLL_RFID: "smartlock/enroll/rfid",
       ENROLL_FINGERPRINT: "smartlock/enroll/fingerprint",
       ENROLL_FINGERPRINT_RESULT: "smartlock/enroll/fingerprint/result",
@@ -118,6 +119,7 @@ class MQTTService {
       this.topics.CHECK_RFID,
       this.topics.FACE,
       this.topics.STATUS,
+      this.topics.FACE_UNLOCK,
       this.topics.ENROLL_RFID,
       this.topics.ENROLL_FINGERPRINT_RESULT,
       this.topics.ENROLL_SUCCESS,
@@ -615,8 +617,13 @@ class MQTTService {
     try {
       let userId = null;
 
+      // ✅ Xử lý face unlock
+      if (method === "face" && data.user_id) {
+        userId = data.user_id;
+        console.log(`✓ Face unlock cho user: ${userId}`);
+      }
       // Xác định userId dựa trên cardUid hoặc fingerprintId
-      if (method === "rfid" && (data.cardUid || data.cardId)) {
+      else if (method === "rfid" && (data.cardUid || data.cardId)) {
         // ✅ Tìm theo uid (cardUid) hoặc card_id
         const card = await RFIDCard.findOne({
           $or: [{ uid: data.cardUid }, { card_id: data.cardId }],
@@ -640,6 +647,14 @@ class MQTTService {
           );
         }
       }
+
+      //   let additionalInfo = data.reason || "";
+      //   if (method === "face" && data.success) {
+      //     additionalInfo =
+      //       data.method === "remote" || data.method === "face_app"
+      //         ? "Face recognition unlock via mobile app"
+      //         : "Face recognition unlock";
+      //   }
 
       const log = await AccessLog.create({
         access_method: method,
@@ -1078,27 +1093,63 @@ class MQTTService {
     }
   }
 
+  // 3. CẬP NHẬT hàm handleFace() để xử lý cả face recognition từ ESP32
   async handleFace(data) {
     console.log("👤 Xử lý nhận diện khuôn mặt...");
-    const isValid = data.status === "valid";
+    console.log("Dữ liệu:", data);
 
-    if (isValid) {
-      console.log("✓ Khuôn mặt hợp lệ - Mở khóa");
-      this.unlockDoor("face", data);
-    } else {
-      console.log("✗ Khuôn mặt không hợp lệ");
-      this.publish(this.topics.CONTROL, {
-        action: "deny",
-        reason: "invalid_face",
-      });
+    const { device_id, status, method, user_id } = data;
+
+    // ✅ Verify device session
+    if (device_id) {
+      const verification = this.verifyDeviceSession(device_id);
+      if (!verification.valid) {
+        console.log(
+          `✗ Device ${device_id} chưa xác thực: ${verification.reason}`
+        );
+        return;
+      }
+      console.log(`✓ Device ${device_id} đã xác thực`);
     }
 
-    // Lưu log
+    const isValid = status === "valid";
+
+    if (isValid) {
+      console.log("✓ Khuôn mặt hợp lệ - Đã mở khóa");
+
+      // Nếu là unlock từ app (method = "remote")
+      if (method === "remote" || method === "face_app") {
+        console.log("📱 Mở khóa từ app bằng AI face recognition");
+      } else {
+        console.log("🤖 Mở khóa từ ESP32 (nếu có camera)");
+      }
+    } else {
+      console.log("✗ Khuôn mặt không hợp lệ");
+    }
+
+    // ✅ Lưu access log
     await this.saveAccessLog({
       method: "face",
-      data: { ...data, success: isValid },
-      deviceId: data.deviceId,
+      data: {
+        ...data,
+        success: isValid,
+        user_id: user_id || null,
+      },
+      deviceId: device_id,
     });
+
+    console.log("✓ Đã lưu access log cho face unlock");
+
+    // ✅ Gửi notification lên app qua Socket.IO
+    if (global.io && isValid) {
+      global.io.emit("door_unlocked", {
+        device_id,
+        method: "face",
+        user_id: user_id,
+        status: "success",
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 
   // Handler xử lý khi ESP32 gửi certificate + signature
@@ -1556,11 +1607,6 @@ ${Buffer.from(certString).toString("base64")}
         return;
       }
 
-      // if (topic.match(/^smartlock\/device\/[^\/]+\/control\/unlock$/)) {
-      //   console.log("🔓 Nhận lệnh unlock từ topic riêng của device");
-      //   return;
-      // }
-
       // Xử lý theo topic cụ thể
       switch (topic) {
         case this.topics.ENROLL_RFID:
@@ -1606,6 +1652,15 @@ ${Buffer.from(certString).toString("base64")}
         case this.topics.FACE:
           const faceData = JSON.parse(messageStr);
           this.handleFace(faceData);
+          break;
+
+        case this.topics.FACE_UNLOCK: // ✅ THÊM handler riêng
+          try {
+            const data = JSON.parse(messageStr);
+            this.handleFace(data);
+          } catch (parseError) {
+            console.error("Lỗi parse face unlock:", parseError);
+          }
           break;
 
         case this.topics.STATUS:

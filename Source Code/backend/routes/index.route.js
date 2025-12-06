@@ -5,6 +5,7 @@ const FingerprintRoutes = require("./fingerprint.route");
 const DeviceRoutes = require("./device.route");
 const OrganizationRoutes = require("./organization.route");
 const notificationRoute = require("./notification.route");
+const faceRoute = require("./face.route");
 
 module.exports = (app) => {
   app.use("/log", LogRoutes);
@@ -20,4 +21,6 @@ module.exports = (app) => {
   app.use("/organization", OrganizationRoutes);
 
   app.use("/notification", notificationRoute);
+
+  app.use("/face", faceRoute);
 };
