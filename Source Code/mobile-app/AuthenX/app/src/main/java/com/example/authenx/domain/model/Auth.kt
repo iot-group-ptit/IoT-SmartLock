@@ -13,7 +13,9 @@ data class RegisterRequest(
     @SerializedName("full_name")
     val fullName: String,
     val phone: String? = null,
-    val role: String = "user"
+    @SerializedName("org_id")
+    val orgId: String,
+    val role: String = "user_manager"
 )
 
 data class AuthResponse(

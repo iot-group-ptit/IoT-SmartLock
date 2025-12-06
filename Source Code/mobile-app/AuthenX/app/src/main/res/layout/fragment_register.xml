@@ -109,7 +109,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Phone Input -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilPhone"
             android:layout_width="0dp"
@@ -140,7 +139,39 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Password Input -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilOrganization"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:hint="@string/organization"
+            app:startIconDrawable="@drawable/business_24px"
+            app:startIconTint="@color/secondary_color"
+            app:boxStrokeColor="@color/secondary_color"
+            app:hintTextColor="@color/secondary_color"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusBottomEnd="12dp"
+            app:endIconMode="dropdown_menu"
+            app:endIconTint="@color/secondary_color"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            app:layout_constraintTop_toBottomOf="@id/tilPhone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <AutoCompleteTextView
+                android:id="@+id/actvOrganization"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none"
+                android:textColor="@color/primary_color"
+                android:textSize="16sp"
+                android:fontFamily="@font/montserrat"
+                android:padding="16dp" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilPassword"
             android:layout_width="0dp"
@@ -159,7 +190,7 @@
             app:helperText="Ít nhất 8 ký tự"
             app:helperTextTextColor="@color/secondary_color"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            app:layout_constraintTop_toBottomOf="@id/tilPhone"
+            app:layout_constraintTop_toBottomOf="@id/tilOrganization"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
@@ -175,7 +206,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Confirm Password Input -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilConfirmPassword"
             android:layout_width="0dp"
@@ -273,7 +303,6 @@
 
         </LinearLayout>
 
-        <!-- Loading Progress -->
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="48dp"

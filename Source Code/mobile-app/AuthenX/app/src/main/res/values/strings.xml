@@ -91,6 +91,7 @@
     <!-- Organization Management -->
     <string name="create_organization">Create Organization</string>
     <string name="create_organization_description">Create a new organization to manage devices and users</string>
+    <string name="organization">Organization</string>
     <string name="organization_name">Organization Name</string>
     <string name="address">Address (Optional)</string>
     <string name="create_organization_success">Organization %s created successfully!</string>

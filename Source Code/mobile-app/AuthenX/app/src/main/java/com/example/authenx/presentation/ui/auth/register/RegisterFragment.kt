@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
@@ -12,6 +13,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.authenx.databinding.FragmentRegisterBinding
+import com.example.authenx.domain.model.Organization
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
@@ -22,6 +24,8 @@ class RegisterFragment : Fragment() {
     private val binding get() = _binding!!
     
     private val viewModel: RegisterViewModel by viewModels()
+    private var organizations = listOf<Organization>()
+    private var selectedOrgId: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -36,6 +40,42 @@ class RegisterFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupTextWatchers()
         setOnClickListener()
+        loadOrganizations()
+        observeOrganizations()
+    }
+    
+    private fun loadOrganizations() {
+        viewModel.loadOrganizations()
+    }
+    
+    private fun observeOrganizations() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.organizations.collect { orgs ->
+                organizations = orgs
+                setupOrganizationDropdown()
+            }
+        }
+    }
+    
+    private fun setupOrganizationDropdown() {
+        if (organizations.isEmpty()) {
+            binding.actvOrganization.setText("No organizations available")
+            binding.actvOrganization.isEnabled = false
+            return
+        }
+        
+        val orgNames = organizations.map { it.name }
+        val adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            orgNames
+        )
+        
+        binding.actvOrganization.setAdapter(adapter)
+        binding.actvOrganization.setOnItemClickListener { _, _, position, _ ->
+            selectedOrgId = organizations[position].id
+            updateRegisterButtonState()
+        }
     }
     
     private fun setupTextWatchers() {
@@ -57,12 +97,14 @@ class RegisterFragment : Fragment() {
         val password = binding.etPassword.text.toString().trim()
         val confirmPassword = binding.etConfirmPassword.text.toString().trim()
         val termsChecked = binding.cbTerms.isChecked
+        val orgSelected = selectedOrgId != null
         
         binding.btnRegister.isEnabled = fullName.isNotEmpty() && 
                 email.isNotEmpty() && 
                 password.isNotEmpty() && 
                 confirmPassword.isNotEmpty() && 
-                termsChecked
+                termsChecked &&
+                orgSelected
     }
 
     private fun setOnClickListener () {
@@ -119,6 +161,15 @@ class RegisterFragment : Fragment() {
             return
         }
         
+        if (selectedOrgId == null) {
+            Toast.makeText(
+                requireContext(),
+                "Please select an organization",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        
         if (!binding.cbTerms.isChecked) {
             Toast.makeText(
                 requireContext(),
@@ -137,7 +188,8 @@ class RegisterFragment : Fragment() {
                     email = email,
                     password = password,
                     fullName = fullName,
-                    phone = phone.ifEmpty { null }
+                    phone = phone.ifEmpty { null },
+                    orgId = selectedOrgId!!
                 )
                 
                 showLoading(false)
