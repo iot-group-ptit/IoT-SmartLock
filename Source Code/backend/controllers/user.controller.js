@@ -281,14 +281,26 @@ module.exports.createUser = async (req, res) => {
 // [GET] http://localhost:3000/user/children - Lấy tất cả user nằm dưới quyền của user_manager (hoặc admin)
 module.exports.getChildrenUsers = async (req, res) => {
   try {
-    const manager = req.user; // token decode
+    const currentUser = req.user; // token decode
+    let users = [];
 
-    // manager.id = parent_id của users con
-
-    const users = await User.find({
-      parent_id: manager.id,
-      role: "user",
-    }).select("-password -email"); // Ẩn password/email vì user không dùng
+    if (currentUser.role === "admin") {
+      // Admin lấy tất cả user_managers
+      users = await User.find({
+        role: "user_manager",
+      }).select("-password");
+    } else if (currentUser.role === "user_manager") {
+      // user_manager lấy users con của mình
+      users = await User.find({
+        parent_id: currentUser.id,
+        role: "user",
+      }).select("-password -email");
+    } else {
+      return res.status(403).json({
+        code: 403,
+        message: "Bạn không có quyền truy cập!",
+      });
+    }
 
     return res.json({
       code: 200,
