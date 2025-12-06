@@ -5,6 +5,10 @@ import com.example.authenx.domain.model.DeleteFingerprintRequest
 import com.example.authenx.domain.model.DeleteFingerprintResponse
 import com.example.authenx.domain.model.EnrollFingerprintRequest
 import com.example.authenx.domain.model.EnrollFingerprintResponse
+import com.example.authenx.domain.model.EnrollRfidRequest
+import com.example.authenx.domain.model.EnrollRfidResponse
+import com.example.authenx.domain.model.DeleteRfidRequest
+import com.example.authenx.domain.model.DeleteRfidResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -38,6 +42,30 @@ class BiometricDataSource @Inject constructor(
         val token = authManager.getToken()
         
         return client.delete("$baseUrl/fingerprint/delete") {
+            headers {
+                append(HttpHeaders.Authorization, "Bearer $token")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
+    
+    suspend fun enrollRfid(request: EnrollRfidRequest): EnrollRfidResponse {
+        val token = authManager.getToken()
+        
+        return client.post("$baseUrl/rfid/enroll") {
+            headers {
+                append(HttpHeaders.Authorization, "Bearer $token")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
+    
+    suspend fun deleteRfid(request: DeleteRfidRequest): DeleteRfidResponse {
+        val token = authManager.getToken()
+        
+        return client.delete("$baseUrl/rfid/delete") {
             headers {
                 append(HttpHeaders.Authorization, "Bearer $token")
             }

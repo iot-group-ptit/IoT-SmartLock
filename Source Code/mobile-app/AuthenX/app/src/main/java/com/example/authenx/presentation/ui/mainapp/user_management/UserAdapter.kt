@@ -15,7 +15,6 @@ import java.util.Locale
 
 class UserAdapter(
     private val onUserClick: (User) -> Unit = {},
-    private val onEnrollBiometricClick: (User) -> Unit = {},
     private val onEditClick: (User) -> Unit = {},
     private val onDeleteClick: (User) -> Unit = {}
 ) : ListAdapter<User, UserAdapter.UserViewHolder>(DiffCallback()) {
@@ -89,10 +88,6 @@ class UserAdapter(
             
             popup.setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
-                    R.id.action_enroll_biometric -> {
-                        onEnrollBiometricClick(user)
-                        true
-                    }
                     R.id.action_edit -> {
                         onEditClick(user)
                         true

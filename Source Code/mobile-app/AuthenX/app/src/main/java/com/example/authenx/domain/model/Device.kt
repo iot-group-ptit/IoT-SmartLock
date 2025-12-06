@@ -9,11 +9,13 @@ data class Device(
     val deviceId: String,
     val type: String?,
     val model: String?,
-    val status: String, // "online", "offline", "maintenance"
+    val status: String, // "pending", "registered", "online", "offline", "blocked"
     @SerializedName("fw_current")
     val fwCurrent: String?,
     @SerializedName("org_id")
     val orgId: String?,
+    @SerializedName("last_seen")
+    val lastSeen: String?,
     val createdAt: String?,
     val updatedAt: String?
 )
@@ -21,5 +23,24 @@ data class Device(
 data class DevicesResponse(
     val success: Boolean,
     val message: String?,
+    val count: Int = 0,
     val data: List<Device>
+)
+
+data class RegisterDeviceRequest(
+    @SerializedName("device_id")
+    val deviceId: String,
+    val type: String? = "smart_lock",
+    val model: String? = "ESP32_v1"
+    // org_id is auto-populated from user_manager's organization
+)
+
+data class RegisterDeviceResponse(
+    val success: Boolean,
+    val message: String,
+    @SerializedName("device_id")
+    val deviceId: String? = null,
+    val status: String? = null,
+    @SerializedName("token_expires")
+    val tokenExpires: String? = null
 )

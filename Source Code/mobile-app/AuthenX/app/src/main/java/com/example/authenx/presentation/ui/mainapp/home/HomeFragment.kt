@@ -62,6 +62,7 @@ class HomeFragment : Fragment() {
         binding.btnStatistic.visibility = View.VISIBLE
         binding.btnManageUsers.visibility = View.VISIBLE
         binding.btnCreateOrganization.visibility = View.GONE // Admin only
+        binding.btnManageDevices.visibility = View.VISIBLE
         binding.btnUpdate.visibility = View.VISIBLE
     }
     
@@ -91,6 +92,9 @@ class HomeFragment : Fragment() {
             }
             btnCreateOrganization.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_createOrganizationFragment)
+            }
+            btnManageDevices.setOnClickListener {
+                findNavController().navigate(R.id.action_homeFragment_to_deviceListFragment)
             }
             btnUpdate.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_firmwareUpdateFragment)

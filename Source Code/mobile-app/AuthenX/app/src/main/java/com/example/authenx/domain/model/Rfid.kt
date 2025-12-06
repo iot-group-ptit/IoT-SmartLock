@@ -4,33 +4,32 @@ import com.google.gson.annotations.SerializedName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class EnrollFingerprintRequest(
-    @SerializedName("user_id")
+data class EnrollRfidRequest(
+    @SerializedName("userId")
     val userId: String,
     @SerializedName("device_id")
     val deviceId: String
 )
 
 @Serializable
-data class EnrollFingerprintResponse(
+data class EnrollRfidResponse(
     val success: Boolean,
     val message: String,
-    val fingerprintId: Int? = null,
-    @SerializedName("user_id")
+    @SerializedName("userId")
     val userId: String? = null,
     @SerializedName("device_id")
     val deviceId: String? = null,
-    val note: String? = null
+    val instruction: String? = null
 )
 
 @Serializable
-data class DeleteFingerprintRequest(
-    val fingerprintId: Int,
+data class DeleteRfidRequest(
+    val cardId: String,
     val userId: String
 )
 
 @Serializable
-data class DeleteFingerprintResponse(
+data class DeleteRfidResponse(
     val success: Boolean,
     val message: String
 )

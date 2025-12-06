@@ -84,16 +84,6 @@ class UserManagementFragment : Fragment() {
             onUserClick = { user ->
                 Toast.makeText(requireContext(), "User: ${user.fullName}", Toast.LENGTH_SHORT).show()
             },
-            onEnrollBiometricClick = { user ->
-                val bundle = bundleOf(
-                    "userId" to user.id,
-                    "userName" to user.fullName
-                )
-                findNavController().navigate(
-                    R.id.action_userManagementFragment_to_enrollBiometricFragment,
-                    bundle
-                )
-            },
             onEditClick = { user ->
                 Toast.makeText(requireContext(), "Edit: ${user.fullName}", Toast.LENGTH_SHORT).show()
             },

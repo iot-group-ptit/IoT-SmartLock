@@ -1,30 +1,30 @@
-package com.example.authenx.presentation.ui.mainapp.enroll_biometric
+package com.example.authenx.presentation.ui.mainapp.enroll_rfid
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.example.authenx.R
-import com.example.authenx.databinding.FragmentEnrollBiometricBinding
+import com.example.authenx.databinding.FragmentEnrollRfidBinding
 import com.example.authenx.data.remote.socket.SocketManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class EnrollBiometricFragment : Fragment() {
+class EnrollRfidFragment : Fragment() {
 
-    private var _binding: FragmentEnrollBiometricBinding? = null
+    private var _binding: FragmentEnrollRfidBinding? = null
     private val binding get() = _binding!!
     
-    private val viewModel: EnrollBiometricViewModel by viewModels()
+    private val viewModel: EnrollRfidViewModel by viewModels()
     
     @Inject
     lateinit var socketManager: SocketManager
@@ -34,10 +34,11 @@ class EnrollBiometricFragment : Fragment() {
     private var deviceId: String? = null
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentEnrollBiometricBinding.inflate(inflater, container, false)
+        _binding = FragmentEnrollRfidBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -60,12 +61,12 @@ class EnrollBiometricFragment : Fragment() {
             findNavController().popBackStack()
         }
         
-        binding.btnEnrollFingerprint.setOnClickListener {
+        binding.btnEnrollRfid.setOnClickListener {
             val uId = userId
             val dId = deviceId
             
             if (uId != null && dId != null) {
-                viewModel.enrollFingerprint(uId, dId)
+                viewModel.enrollRfid(uId, dId)
             } else {
                 val missingParam = when {
                     uId == null -> "User ID"
@@ -77,7 +78,7 @@ class EnrollBiometricFragment : Fragment() {
         }
         
         binding.btnDone.setOnClickListener {
-            findNavController().popBackStack(R.id.userManagementFragment, false)
+            findNavController().popBackStack(R.id.deviceDetailFragment, false)
         }
     }
     
@@ -94,11 +95,11 @@ class EnrollBiometricFragment : Fragment() {
     private fun observeSocketEvents() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                socketManager.onFingerprintEnrolled().collect { event ->
-                    // event contain { userId, fingerprintId, success, message }
+                socketManager.onRfidEnrolled().collect { event ->
+                    // event contains { userId, cardUid, success, message }
                     if (event.userId == userId) {
                         if (event.success) {
-                            viewModel.onEnrollmentComplete()
+                            viewModel.onEnrollmentComplete(event.cardUid ?: "")
                         } else {
                             viewModel.onEnrollmentFailed(event.message ?: getString(R.string.enrollment_failed))
                         }
@@ -108,29 +109,29 @@ class EnrollBiometricFragment : Fragment() {
         }
     }
     
-    private fun updateUi(state: EnrollBiometricUiState) {
+    private fun updateUi(state: EnrollRfidUiState) {
         binding.progressBar.visibility = if (state.isEnrolling) View.VISIBLE else View.GONE
         
         // Update status text
         binding.tvStatus.text = state.enrollmentStatus
         
-        // Update fingerprint ID
-        state.fingerprintId?.let {
-            binding.tvFingerprintId.text = getString(R.string.fingerprint_id_label, it)
-            binding.tvFingerprintId.visibility = View.VISIBLE
+        // Update card UID
+        state.cardUid?.let {
+            binding.tvCardUid.text = getString(R.string.card_uid_label, it)
+            binding.tvCardUid.visibility = View.VISIBLE
         }
         
         // Show/hide buttons based on state
-        binding.btnEnrollFingerprint.isEnabled = !state.isEnrolling && !state.success
+        binding.btnEnrollRfid.isEnabled = !state.isEnrolling && !state.success
         binding.btnDone.visibility = if (state.success) View.VISIBLE else View.GONE
         
-        // Show instruction when waiting for ESP32
-        if (state.waitingForEsp) {
+        // Show instruction when waiting for device
+        if (state.waitingForDevice) {
             binding.tvInstruction.visibility = View.VISIBLE
-            binding.imgFingerprint.visibility = View.VISIBLE
+            binding.imgRfid.visibility = View.VISIBLE
         } else {
             binding.tvInstruction.visibility = View.GONE
-            binding.imgFingerprint.visibility = View.GONE
+            binding.imgRfid.visibility = View.GONE
         }
         
         // Show error
