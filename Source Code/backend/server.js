@@ -10,8 +10,7 @@ const morgan = require("morgan");
 const database = require("./config/database");
 const mqttClient = require("./config/mqtt");
 const route = require("./routes/index.route");
-
-database.connect();
+const certificateService = require("./services/certificate.service");
 
 const app = express();
 const server = http.createServer(app);
@@ -75,6 +74,12 @@ function setupMqttSubscriptions() {
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
+    // 1. Khởi tạo CA trước
+    await certificateService.initializeCA();
+
+    // 2. Kết nối MongoDB
+    await database.connect();
+
     // Kết nối MQTT với callback
     mqttClient.connect(() => {
       // Chỉ setup subscriptions sau khi MQTT đã kết nối

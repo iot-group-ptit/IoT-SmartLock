@@ -1,17 +1,17 @@
 const Fingerprint = require("../models/fingerprint.model");
 const User = require("../models/user.model");
+const Device = require("../models/device.model");
 const mqttClient = require("../config/mqtt");
 
 //[POST] http://localhost:3000/fingerprint/enroll - User_manager đăng ký vân tay mới cho user
 module.exports.enrollFingerprint = async (req, res) => {
   try {
-    const { user_id } = req.body;
+    const { user_id, device_id } = req.body;
 
-    // Validate user_id
-    if (!user_id) {
+    if (!user_id || !device_id) {
       return res.status(400).json({
         success: false,
-        message: "user_id là bắt buộc",
+        message: "user_id và device_id là bắt buộc",
       });
     }
 
@@ -21,6 +21,31 @@ module.exports.enrollFingerprint = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Không tìm thấy user",
+      });
+    }
+
+    // ✅ THÊM: Kiểm tra device
+    const device = await Device.findOne({ device_id });
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: "Thiết bị không tồn tại",
+      });
+    }
+
+    if (device.status !== "online") {
+      return res.status(400).json({
+        success: false,
+        message: "Thiết bị chưa online hoặc chưa đăng nhập",
+      });
+    }
+
+    // ✅ THÊM: Verify session
+    const session = mqttClient.verifyDeviceSession(device_id);
+    if (!session.valid) {
+      return res.status(401).json({
+        success: false,
+        message: `Thiết bị chưa xác thực: ${session.reason}`,
       });
     }
 
@@ -43,20 +68,20 @@ module.exports.enrollFingerprint = async (req, res) => {
       });
     }
 
-    // Gửi lệnh đăng ký vân tay xuống ESP32 qua MQTT
+    // ✅ GỬI VÀO TOPIC RIÊNG CỦA DEVICE
     const command = `ENROLL_FINGERPRINT:${user_id}:${fingerprintId}`;
-    mqttClient.publish(mqttClient.topics.ENROLL_FINGERPRINT, command);
+    const deviceTopic = `smartlock/device/${device_id}/enroll/fingerprint`;
 
-    console.log(`📤 Đã gửi lệnh đăng ký vân tay xuống ESP32`);
-    console.log(`   User ID: ${user_id}`);
-    console.log(`   Fingerprint ID: ${fingerprintId}`);
+    mqttClient.publish(deviceTopic, command);
 
-    // Trả response cho app
+    console.log(`✓ Đã gửi lệnh enroll vân tay đến device ${device_id}`);
+
     res.json({
       success: true,
-      message: "Đã gửi lệnh đăng ký vân tay xuống thiết bị",
+      message: "Đã gửi lệnh đăng ký vân tay",
       fingerprintId: fingerprintId,
       user_id: user_id,
+      device_id: device_id,
       note: "Vui lòng đặt ngón tay vào cảm biến",
     });
   } catch (error) {
@@ -71,13 +96,37 @@ module.exports.enrollFingerprint = async (req, res) => {
 //[DELETE] http://localhost:3000/fingerprint/delete - User_manager xoá vân tay của user
 module.exports.deleteFingerprint = async (req, res) => {
   try {
-    const { fingerprintId, userId } = req.body;
+    const { fingerprintId, userId, device_id } = req.body;
 
-    // Validate input
-    if (!fingerprintId || !userId) {
+    if (!fingerprintId || !userId || !device_id) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu fingerprintId hoặc userId",
+        message: "Thiếu fingerprintId, userId hoặc device_id",
+      });
+    }
+
+    // ✅ THÊM: Kiểm tra device
+    const device = await Device.findOne({ device_id });
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: "Thiết bị không tồn tại",
+      });
+    }
+
+    if (device.status !== "online") {
+      return res.status(400).json({
+        success: false,
+        message: "Thiết bị chưa online hoặc chưa đăng nhập",
+      });
+    }
+
+    // ✅ THÊM: Verify device session
+    const session = mqttClient.verifyDeviceSession(device_id);
+    if (!session.valid) {
+      return res.status(401).json({
+        success: false,
+        message: `Thiết bị chưa xác thực: ${session.reason}`,
       });
     }
 
@@ -85,6 +134,7 @@ module.exports.deleteFingerprint = async (req, res) => {
     const fingerprint = await Fingerprint.findOne({
       fingerprint_id: String(fingerprintId),
       user_id: userId,
+      device_id: device_id,
     });
 
     if (!fingerprint) {
@@ -94,21 +144,20 @@ module.exports.deleteFingerprint = async (req, res) => {
       });
     }
 
-    // Gửi lệnh xóa xuống ESP32 qua MQTT
+    // ✅ GỬI VÀO TOPIC RIÊNG
     const deleteCommand = `DELETE_FINGERPRINT:${userId}:${fingerprintId}`;
-    mqttClient.publish(mqttClient.topics.DELETE_FINGERPRINT, deleteCommand, {
-      qos: 1,
-    });
+    const deviceTopic = `smartlock/device/${device_id}/delete/fingerprint`;
+
+    mqttClient.publish(deviceTopic, deleteCommand, { qos: 1 });
 
     console.log(`📤 Đã gửi lệnh xóa vân tay xuống ESP32: ${deleteCommand}`);
 
-    // Trả về response ngay lập tức
-    // Kết quả thực tế sẽ được gửi qua Socket.IO sau khi ESP32 xác nhận
     res.json({
       success: true,
-      message: "Đã gửi lệnh xóa vân tay. Vui lòng chờ xác nhận từ thiết bị.",
+      message: "Đã gửi lệnh xóa vân tay",
       fingerprintId: fingerprintId,
       userId: userId,
+      device_id: device_id,
     });
   } catch (error) {
     console.error("Lỗi xóa vân tay:", error);

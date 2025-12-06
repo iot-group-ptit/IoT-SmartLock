@@ -12,6 +12,10 @@ const fingerprintSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  device_id: {
+    type: String,
+    required: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

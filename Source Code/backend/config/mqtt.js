@@ -4,6 +4,8 @@ const RFIDCard = require("../models/rfid.model");
 const Fingerprint = require("../models/fingerprint.model");
 const User = require("../models/user.model");
 const Device = require("../models/device.model");
+const securityAlertService = require("../services/securityAlert.service");
+const certificateService = require("../services/certificate.service");
 const crypto = require("crypto");
 
 class MQTTService {
@@ -42,7 +44,17 @@ class MQTTService {
       DEVICE_PROVISION_RESPONSE: "smartlock/device/provision/response",
       DEVICE_FINALIZE_REQUEST: "smartlock/device/finalize/request",
       DEVICE_FINALIZE_RESPONSE: "smartlock/device/finalize/response",
+      DEVICE_LOGIN: "smartlock/device/login",
+      DEVICE_LOGIN_RESPONSE: "smartlock/device/login/response",
+      DEVICE_HEARTBEAT: "smartlock/device/heartbeat",
     };
+
+    // Session storage
+    this.deviceSessions = new Map();
+    this.SESSION_TIMEOUT = 10 * 60 * 1000; // 10 phút
+
+    // Cleanup mỗi 2 phút
+    setInterval(() => this.cleanupExpiredSessions(), 2 * 60 * 1000);
   }
 
   // Kết nối tới MQTT Broker
@@ -114,6 +126,9 @@ class MQTTService {
       //   this.topics.AUTH_REQUEST,
       this.topics.DEVICE_PROVISION_REQUEST,
       this.topics.DEVICE_FINALIZE_REQUEST,
+      "smartlock/device/+/request_ca_cert",
+      this.topics.DEVICE_LOGIN,
+      this.topics.DEVICE_HEARTBEAT,
     ];
 
     topicsToSubscribe.forEach((topic) => {
@@ -176,6 +191,425 @@ class MQTTService {
     return true;
   }
 
+  async handleDeviceLogin(data) {
+    console.log("\n=================================");
+    console.log("🔐 XỬ LÝ DEVICE LOGIN REQUEST");
+    console.log("=================================");
+    console.log("Dữ liệu:", data);
+
+    const { device_id, timestamp, signature } = data;
+
+    try {
+      // ✅ Validation
+      if (!device_id || !timestamp || !signature) {
+        console.log("✗ Thiếu thông tin");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id: device_id || "unknown",
+          success: false,
+          reason: "Missing required fields",
+        });
+      }
+
+      // ✅ Tìm device trong database
+      const device = await Device.findOne({ device_id });
+
+      if (!device) {
+        console.log("✗ Device không tồn tại");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Device not found",
+        });
+      }
+
+      if (!device.certificate) {
+        console.log("✗ Device chưa có certificate");
+        console.log("Status hiện tại:", device.status);
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Device not registered. Please complete provisioning first.",
+        });
+      }
+
+      console.log("✓ Device có certificate - Cho phép login");
+      console.log("Status trước khi login:", device.status);
+
+      // ✅ Kiểm tra certificate còn hạn không (optional)
+      if (
+        device.certificate_expires &&
+        new Date() > device.certificate_expires
+      ) {
+        console.log("✗ Certificate đã hết hạn");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Certificate expired. Please re-register device.",
+        });
+      }
+
+      // ✅ Verify signature
+      console.log("🔍 Đang verify signature...");
+
+      if (!device.public_key) {
+        console.log("✗ Không tìm thấy public key");
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Public key not found",
+        });
+      }
+
+      // Verify timestamp signature
+      const verify = crypto.createVerify("SHA256");
+      verify.update(String(timestamp));
+      verify.end();
+
+      let isValid = false;
+      try {
+        isValid = verify.verify(
+          device.public_key,
+          Buffer.from(signature, "base64")
+        );
+      } catch (verifyError) {
+        console.error("✗ Lỗi verify:", verifyError.message);
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Signature verification error",
+        });
+      }
+
+      if (!isValid) {
+        console.log("✗ Signature không hợp lệ");
+
+        // Log failed attempt
+        await AccessLog.create({
+          access_method: "device_login",
+          result: "failed",
+          device_id: device_id,
+          additional_info: "Invalid signature",
+        });
+
+        return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+          device_id,
+          success: false,
+          reason: "Invalid signature",
+        });
+      }
+
+      console.log("✓ Signature hợp lệ!");
+
+      // ✅ Kiểm tra timestamp dựa theo loại: epoch ms vs. device millis
+      const ts = Number(timestamp);
+      const isEpochMillis = ts > 1e12; // epoch ms thường >= 1,000,000,000,000
+
+      if (isEpochMillis) {
+        const timestampAge = Date.now() - ts;
+
+        // Không quá 5 phút trong quá khứ
+        if (timestampAge > 5 * 60 * 1000) {
+          console.log("✗ Timestamp quá cũ (possible replay attack)");
+          return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+            device_id,
+            success: false,
+            reason: "Timestamp too old",
+          });
+        }
+
+        // Không quá 1 phút trong tương lai
+        if (timestampAge < -60 * 1000) {
+          console.log("✗ Timestamp trong tương lai");
+          return this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+            device_id,
+            success: false,
+            reason: "Invalid timestamp",
+          });
+        }
+      } else {
+        // Timestamp là millis() của thiết bị → không so với Date.now()
+        // Optional: chống replay đơn giản bằng cách ghi nhớ last timestamp theo device và yêu cầu tăng dần
+        const sessionInfo = this.deviceSessions.get(device_id);
+        if (
+          sessionInfo &&
+          typeof sessionInfo.last_device_timestamp === "number"
+        ) {
+          const lastTs = sessionInfo.last_device_timestamp;
+          // Cho phép timestamp tăng dần và khác biệt không quá lớn (ví dụ < 10 phút thiết bị)
+          if (ts < lastTs) {
+            console.log(
+              "⚠️ Timestamp thiết bị nhỏ hơn lần trước (có thể reboot) → vẫn chấp nhận."
+            );
+          }
+        }
+      }
+
+      // ✅ Tạo session token
+      const sessionToken = crypto.randomBytes(32).toString("hex");
+
+      // ✅ Lưu session
+      this.deviceSessions.set(device_id, {
+        session_token: sessionToken,
+        device_id: device_id,
+        logged_in_at: new Date(),
+        last_heartbeat: new Date(),
+        last_device_timestamp: ts,
+        status: "online",
+      });
+
+      // ✅ Cập nhật device trong database
+      device.status = "online";
+      device.last_seen = new Date();
+      await device.save();
+
+      console.log("✓ Device đăng nhập thành công:", device_id);
+      console.log("✓ Session token:", sessionToken.substring(0, 16) + "...");
+      console.log("✓ Status sau khi login:", device.status);
+      console.log("✓ Phương thức: X.509 Certificate Signature");
+
+      //   // ✅ Gửi response
+      //   this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+      //     device_id,
+      //     success: true,
+      //     session_token: sessionToken,
+      //     message: "Login successful",
+      //     timestamp: new Date().toISOString(),
+      //     auth_method: "x509_signature",
+      //   });
+
+      // ✅ Gửi response (QUAN TRỌNG: Kiểm tra payload size)
+      const responsePayload = {
+        device_id,
+        success: true,
+        session_token: sessionToken,
+        message: "Login successful",
+        timestamp: new Date().toISOString(),
+        auth_method: "x509_signature",
+      };
+
+      console.log("\n📤 Response payload:");
+      console.log(JSON.stringify(responsePayload));
+      console.log(
+        "📋 Payload size:",
+        JSON.stringify(responsePayload).length,
+        "bytes"
+      );
+
+      this.publish(this.topics.DEVICE_LOGIN_RESPONSE, responsePayload);
+
+      // ✅ Log thành công
+      await AccessLog.create({
+        access_method: "device_login",
+        result: "success",
+        device_id: device_id,
+        additional_info: "Device authenticated successfully",
+      });
+
+      // ✅ Gửi thông báo lên app
+      if (global.io) {
+        global.io.emit("device_status", {
+          device_id,
+          status: "online",
+          logged_in_at: new Date(),
+          auth_method: "x509_signature",
+        });
+      }
+
+      console.log("=================================\n");
+    } catch (error) {
+      console.error("✗ Lỗi xử lý login:", error);
+
+      await AccessLog.create({
+        access_method: "device_login",
+        result: "failed",
+        device_id: device_id,
+        additional_info: `Login error: ${error.message}`,
+      });
+
+      this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
+        device_id,
+        success: false,
+        reason: "Server error: " + error.message,
+      });
+    }
+  }
+
+  async handleDeviceHeartbeat(data) {
+    const { device_id, session_token, status } = data;
+
+    try {
+      // ✅ Kiểm tra session
+      const session = this.deviceSessions.get(device_id);
+
+      if (!session) {
+        console.log(
+          `⚠️ Device ${device_id} không có session - yêu cầu login lại`
+        );
+
+        // Gửi yêu cầu login lại
+        this.publish(`smartlock/device/${device_id}/reauth`, {
+          device_id,
+          reason: "Session not found. Please login again.",
+        });
+
+        return;
+      }
+
+      // ✅ Verify session token
+      if (session.session_token !== session_token) {
+        console.log(`✗ Session token không hợp lệ cho ${device_id}`);
+
+        // Xóa session cũ
+        this.deviceSessions.delete(device_id);
+
+        // Yêu cầu login lại
+        this.publish(`smartlock/device/${device_id}/reauth`, {
+          device_id,
+          reason: "Invalid session token. Please login again.",
+        });
+
+        return;
+      }
+
+      // ✅ Cập nhật heartbeat
+      session.last_heartbeat = new Date();
+      session.status = status || "online";
+      this.deviceSessions.set(device_id, session);
+
+      // ✅ Cập nhật database
+      await Device.findOneAndUpdate(
+        { device_id },
+        {
+          last_seen: new Date(),
+          status: status || "online",
+        }
+      );
+
+      console.log(
+        `💓 Heartbeat từ ${device_id} - Status: ${status || "online"}`
+      );
+
+      // ✅ Gửi thông báo lên app (nếu status thay đổi)
+      if (global.io && status) {
+        global.io.emit("device_status", {
+          device_id,
+          status: status,
+          last_seen: new Date(),
+        });
+      }
+    } catch (error) {
+      console.error(`✗ Lỗi xử lý heartbeat từ ${device_id}:`, error);
+    }
+  }
+
+  async cleanupExpiredSessions() {
+    console.log("\n🧹 Cleaning up expired sessions...");
+
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    for (const [device_id, session] of this.deviceSessions.entries()) {
+      const timeSinceHeartbeat =
+        now - new Date(session.last_heartbeat).getTime();
+
+      // Nếu không heartbeat trong 10 phút → xóa session
+      if (timeSinceHeartbeat > this.SESSION_TIMEOUT) {
+        this.deviceSessions.delete(device_id);
+        cleanedCount++;
+
+        console.log(`✓ Removed expired session: ${device_id}`);
+
+        // Cập nhật status trong database
+        await Device.findOneAndUpdate(
+          { device_id },
+          {
+            last_seen: new Date(),
+          }
+        );
+
+        // Gửi thông báo lên app (optional)
+        if (global.io) {
+          global.io.emit("device_status", {
+            device_id,
+            status: "session_expired",
+            reason: "No heartbeat received",
+            last_seen: new Date(),
+          });
+        }
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`✓ Cleaned ${cleanedCount} expired session(s)`);
+    }
+  }
+
+  verifyDeviceSession(device_id, session_token) {
+    const session = this.deviceSessions.get(device_id);
+
+    if (!session) {
+      console.log(`⚠️ Device ${device_id} không có session`);
+      return {
+        valid: false,
+        reason: "Session not found. Please login.",
+      };
+    }
+
+    if (session_token && session.session_token !== session_token) {
+      console.log(`✗ Session token không hợp lệ cho ${device_id}`);
+      return {
+        valid: false,
+        reason: "Invalid session token",
+      };
+    }
+
+    // Kiểm tra timeout
+    const timeSinceHeartbeat =
+      Date.now() - new Date(session.last_heartbeat).getTime();
+    if (timeSinceHeartbeat > this.SESSION_TIMEOUT) {
+      this.deviceSessions.delete(device_id);
+      console.log(`⏱️ Session expired cho ${device_id}`);
+      return {
+        valid: false,
+        reason: "Session expired",
+      };
+    }
+
+    return { valid: true, session };
+  }
+
+  async handleUnlockRequest(data) {
+    const { device_id, session_token, user_id } = data;
+
+    // ✅ Verify session
+    const verification = await this.verifyDeviceSession(
+      device_id,
+      session_token
+    );
+
+    if (!verification.valid) {
+      console.log("✗ Unlock denied:", verification.reason);
+
+      // Yêu cầu login lại
+      this.publish(`smartlock/device/${device_id}/reauth`, {
+        device_id,
+        reason: verification.reason,
+      });
+
+      return;
+    }
+
+    // ✅ Session hợp lệ → Gửi lệnh unlock
+    this.publish(this.topics.UNLOCK, {
+      action: "unlock",
+      method: "remote",
+      user_id: user_id,
+      timestamp: new Date().toISOString(),
+    });
+
+    console.log(`✓ Unlock command sent to ${device_id}`);
+  }
+
   // --- HÀM LƯU ACCESS LOG ---
   async saveAccessLog({ method, data, deviceId }) {
     try {
@@ -218,6 +652,11 @@ class MQTTService {
       console.log(
         `✓ Đã lưu access log: ${log._id} (User: ${userId || "NULL"})`
       );
+
+      if (!data.success && deviceId) {
+        await securityAlertService.checkFailedAttempts(deviceId, method);
+      }
+
       return log;
     } catch (error) {
       console.error("✗ Lỗi lưu access log:", error);
@@ -251,7 +690,26 @@ class MQTTService {
   // Xử lý enrollment thẻ RFID
   async handleEnrollRFID(data) {
     console.log("💳 Xử lý đăng ký thẻ RFID...");
-    const { cardUid, userId, status } = data;
+    const { cardUid, userId, status, device_id } = data;
+
+    if (device_id) {
+      const verification = this.verifyDeviceSession(device_id);
+      if (!verification.valid) {
+        console.log(
+          `✗ Device ${device_id} chưa xác thực: ${verification.reason}`
+        );
+
+        if (global.io) {
+          global.io.to(`user_${userId}`).emit("rfid_enroll_result", {
+            success: false,
+            message: `Thiết bị chưa xác thực: ${verification.reason}`,
+            cardUid: cardUid,
+          });
+        }
+        return;
+      }
+      console.log(`✓ Device ${device_id} đã xác thực - Tiếp tục enroll`);
+    }
 
     if (status === "success") {
       try {
@@ -274,6 +732,7 @@ class MQTTService {
           card_id: cardUid,
           uid: cardUid,
           user_id: userId,
+          device_id: device_id,
           registered_at: new Date(),
         });
 
@@ -285,12 +744,10 @@ class MQTTService {
             message: "Đăng ký thẻ RFID thành công!",
             cardUid: cardUid,
             cardId: newCard.card_id,
+            device_id: device_id,
             registeredAt: newCard.createdAt,
           });
         }
-
-        // Phản hồi lại ESP32 hoặc app
-        // this.publish(this.topics.ENROLL_SUCCESS, { cardUid, userId });
       } catch (err) {
         console.error("✗ Lỗi khi lưu thẻ RFID:", err);
 
@@ -301,35 +758,48 @@ class MQTTService {
             cardUid: cardUid,
           });
         }
-
-        // this.publish(this.topics.ENROLL_FAILED, {
-        //   cardUid,
-        //   userId,
-        //   reason: err.message,
-        // });
       }
     } else {
       console.log("✗ Đăng ký thẻ thất bại:", data.reason);
-      //   this.publish(this.topics.ENROLL_FAILED, {
-      //     cardUid,
-      //     userId,
-      //     reason: data.reason,
-      //   });
     }
   }
 
   async handleCheckRFID(data) {
     console.log("💳 Kiểm tra thẻ RFID để mở khóa...");
-    const { cardUid } = data;
+    const { cardUid, device_id } = data;
 
     try {
-      const card = await RFIDCard.findOne({ uid: cardUid });
+      if (device_id) {
+        const verification = this.verifyDeviceSession(device_id);
+        if (!verification.valid) {
+          console.log(
+            `✗ Device ${device_id} chưa xác thực: ${verification.reason}`
+          );
+
+          // ✅ Gửi thông báo về ESP32
+          this.publish(`smartlock/device/${device_id}/reauth`, {
+            device_id,
+            reason: verification.reason,
+          });
+
+          return;
+        }
+        console.log(`✓ Device ${device_id} đã xác thực - Tiếp tục check RFID`);
+      }
+
+      const card = await RFIDCard.findOne({
+        uid: cardUid,
+        device_id: device_id,
+      }).select("user_id uid card_id");
 
       if (card) {
         console.log("✓ Thẻ hợp lệ - Gửi lệnh mở khóa");
 
-        // ✅ GỬI LỆNH MỞ KHÓA
-        this.publish(this.topics.UNLOCK, {
+        const unlockTopic = device_id
+          ? `smartlock/device/${device_id}/control/unlock`
+          : this.topics.UNLOCK;
+
+        this.publish(unlockTopic, {
           action: "unlock",
           method: "rfid",
           cardUid: cardUid,
@@ -337,19 +807,27 @@ class MQTTService {
           timestamp: new Date().toISOString(),
         });
 
-        // Lưu log
+        // ✅ SỬA: Lưu log với userId đúng format
         await this.saveAccessLog({
           method: "rfid",
-          data: { cardUid, success: true },
-          deviceId: null,
+          data: {
+            cardUid,
+            success: true,
+            cardId: card.card_id,
+          },
+          deviceId: device_id,
         });
 
         console.log("📤 Đã gửi lệnh mở khóa cho thẻ:", cardUid);
       } else {
         console.log("✗ Thẻ không hợp lệ - Từ chối");
 
-        // ✅ GỬI LỆNH TỪ CHỐI (optional - nếu muốn)
-        this.publish(this.topics.CONTROL, {
+        // ✅ GỬI LỆNH TỪ CHỐI
+        const controlTopic = device_id
+          ? `smartlock/device/${device_id}/control`
+          : this.topics.CONTROL;
+
+        this.publish(controlTopic, {
           action: "deny",
           reason: "invalid_card",
           cardUid: cardUid,
@@ -358,21 +836,70 @@ class MQTTService {
         // Lưu log
         await this.saveAccessLog({
           method: "rfid",
-          data: { cardUid, success: false, reason: "Card not found" },
-          deviceId: null,
+          data: {
+            cardUid,
+            success: false,
+            reason: "Card not found or not registered for this device",
+          },
+          deviceId: device_id,
         });
       }
     } catch (err) {
       console.error("✗ Lỗi kiểm tra thẻ:", err);
+
+      // ✅ Gửi lỗi về ESP32
+      if (device_id) {
+        this.publish(`smartlock/device/${device_id}/control`, {
+          action: "deny",
+          reason: "server_error",
+          cardUid: cardUid,
+        });
+      }
     }
   }
 
   async handleFingerprint(data) {
     console.log("🔐 Xử lý xác thực vân tay...");
+
+    const { fingerprintId, status, device_id } = data;
+
+    // ✅ THÊM: Verify session
+    if (device_id) {
+      const verification = this.verifyDeviceSession(device_id);
+      if (!verification.valid) {
+        console.log(
+          `✗ Device ${device_id} chưa xác thực: ${verification.reason}`
+        );
+
+        // Gửi yêu cầu login lại
+        this.publish(`smartlock/device/${device_id}/reauth`, {
+          device_id,
+          reason: verification.reason,
+        });
+
+        return;
+      }
+      console.log(
+        `✓ Device ${device_id} đã xác thực - Tiếp tục xác thực vân tay`
+      );
+    }
+
     const isValid = data.status === "valid";
 
     if (isValid) {
       console.log("✓ Vân tay hợp lệ - Mở khóa");
+
+      // ✅ Gửi unlock vào topic riêng
+      const unlockTopic = device_id
+        ? `smartlock/device/${device_id}/control/unlock`
+        : this.topics.UNLOCK;
+
+      this.publish(unlockTopic, {
+        action: "unlock",
+        method: "fingerprint",
+        fingerprintId: fingerprintId,
+        timestamp: new Date().toISOString(),
+      });
     } else {
       console.log("✗ Vân tay không hợp lệ");
     }
@@ -381,16 +908,30 @@ class MQTTService {
     await this.saveAccessLog({
       method: "fingerprint",
       data: { ...data, success: isValid },
-      deviceId: data.deviceId,
+      deviceId: device_id,
     });
   }
 
   // Thêm handler mới cho kết quả đăng ký vân tay
   async handleEnrollFingerprintResult(data) {
     console.log("🔐 Xử lý kết quả đăng ký vân tay từ ESP32...");
-    console.log("Dữ liệu nhận được:", data);
+    const { status, fingerprintId, userId, reason, device_id } = data;
 
-    const { status, fingerprintId, userId, reason } = data;
+    // ✅ THÊM: Verify device session
+    if (device_id) {
+      const verification = this.verifyDeviceSession(device_id);
+      if (!verification.valid) {
+        console.log(`✗ Device ${device_id} chưa xác thực`);
+
+        if (global.io) {
+          global.io.to(`user_${userId}`).emit("fingerprint_enroll_result", {
+            success: false,
+            message: `Thiết bị chưa xác thực: ${verification.reason}`,
+          });
+        }
+        return;
+      }
+    }
 
     try {
       if (status === "success") {
@@ -398,11 +939,12 @@ class MQTTService {
         const fingerprint = await Fingerprint.create({
           fingerprint_id: String(fingerprintId),
           user_id: userId,
+          device_id: device_id,
           createdAt: new Date(),
         });
 
         console.log(
-          `✓ Đã lưu vân tay ID ${fingerprintId} vào database cho user ${userId}`
+          `✓ Đã lưu vân tay ID ${fingerprintId} cho device ${device_id}`
         );
 
         // Gửi thông báo thành công lên app qua Socket.IO
@@ -412,6 +954,7 @@ class MQTTService {
             message: "Đăng ký vân tay thành công!",
             fingerprintId: fingerprintId,
             userId: userId,
+            device_id: device_id,
             registeredAt: fingerprint.createdAt,
           });
         }
@@ -448,13 +991,35 @@ class MQTTService {
     console.log("🗑️ Xử lý kết quả xóa vân tay từ ESP32...");
     console.log("Dữ liệu nhận được:", data);
 
-    const { status, fingerprintId, userId, reason } = data;
+    const { status, fingerprintId, userId, reason, device_id } = data;
+
+    // ✅ THÊM: Verify device session
+    if (device_id) {
+      const verification = this.verifyDeviceSession(device_id);
+      if (!verification.valid) {
+        console.log(
+          `✗ Device ${device_id} chưa xác thực: ${verification.reason}`
+        );
+
+        if (global.io) {
+          global.io.to(`user_${userId}`).emit("fingerprint_delete_result", {
+            success: false,
+            message: `Thiết bị chưa xác thực: ${verification.reason}`,
+            fingerprintId: fingerprintId,
+            userId: userId,
+          });
+        }
+        return;
+      }
+      console.log(`✓ Device ${device_id} đã xác thực - Tiếp tục xử lý`);
+    }
 
     try {
       if (status === "success") {
         // Xóa vân tay khỏi database
         const result = await Fingerprint.findOneAndDelete({
           fingerprint_id: String(fingerprintId),
+          device_id: device_id,
         });
 
         if (result) {
@@ -467,6 +1032,7 @@ class MQTTService {
               message: "Xóa vân tay thành công!",
               fingerprintId: fingerprintId,
               userId: userId,
+              device_id: device_id,
             });
           }
         } else {
@@ -494,6 +1060,7 @@ class MQTTService {
             message: reason || "Xóa vân tay thất bại",
             fingerprintId: fingerprintId,
             userId: userId,
+            device_id: device_id,
           });
         }
       }
@@ -861,10 +1428,15 @@ class MQTTService {
       console.log("✓ Chữ ký hợp lệ!");
 
       // Tạo certificate
-      const certificate = this.generateCertificate(
+      //   const certificate = this.generateCertificate(
+      //     device_id,
+      //     device.public_key
+      //   );
+      const result = await certificateService.issueDeviceCertificate(
         device_id,
         device.public_key
       );
+      const certificate = result.certificate;
 
       // Cập nhật device
       device.certificate = certificate;
@@ -936,12 +1508,58 @@ ${Buffer.from(certString).toString("base64")}
 -----END CERTIFICATE-----`;
   }
 
+  // ✅ Handler gửi CA Certificate
+  async handleRequestCACertificate(data) {
+    console.log("📤 ESP32 yêu cầu CA Certificate...");
+    const { device_id } = data;
+
+    if (!device_id) {
+      console.log("✗ Thiếu device_id");
+      return;
+    }
+
+    try {
+      const certificateService = require("../services/certificate.service");
+
+      // Lấy CA certificate
+      const caCertPem = certificateService.getCACertificate();
+
+      // Gửi CA cert xuống ESP32
+      const topic = `smartlock/device/${device_id}/ca_certificate`;
+      this.publish(topic, {
+        device_id,
+        ca_certificate: caCertPem,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`✓ Đã gửi CA Certificate cho device: ${device_id}`);
+    } catch (error) {
+      console.error("✗ Lỗi gửi CA Certificate:", error);
+    }
+  }
+
   // Thay thế hàm handleMessage trong mqtt.js
   handleMessage(topic, message) {
     try {
       const messageStr = message.toString();
       console.log(`\n📨 Nhận message từ topic: ${topic}`);
       console.log("Raw message:", messageStr);
+
+      // ✅ XỬ LÝ REQUEST CA CERTIFICATE
+      if (topic.includes("/request_ca_cert")) {
+        try {
+          const data = JSON.parse(messageStr);
+          this.handleRequestCACertificate(data);
+        } catch (parseError) {
+          console.error("Lỗi parse request CA cert:", parseError);
+        }
+        return;
+      }
+
+      // if (topic.match(/^smartlock\/device\/[^\/]+\/control\/unlock$/)) {
+      //   console.log("🔓 Nhận lệnh unlock từ topic riêng của device");
+      //   return;
+      // }
 
       // Xử lý theo topic cụ thể
       switch (topic) {
@@ -1030,6 +1648,23 @@ ${Buffer.from(certString).toString("base64")}
             this.handleDeviceFinalizeRequest(data);
           } catch (parseError) {
             console.error("Lỗi parse finalize request:", parseError);
+          }
+          break;
+        case this.topics.DEVICE_LOGIN:
+          try {
+            const loginData = JSON.parse(messageStr);
+            this.handleDeviceLogin(loginData);
+          } catch (parseError) {
+            console.error("Lỗi parse login request:", parseError);
+          }
+          break;
+
+        case this.topics.DEVICE_HEARTBEAT:
+          try {
+            const heartbeatData = JSON.parse(messageStr);
+            this.handleDeviceHeartbeat(heartbeatData);
+          } catch (parseError) {
+            console.error("Lỗi parse heartbeat:", parseError);
           }
           break;
         default:
