@@ -136,6 +136,94 @@ module.exports.logout = (req, res) => {
   });
 };
 
+// [PATCH] http://localhost:3000/user/update - user_manager / admin chỉnh sửa hồ sơ cá nhân
+module.exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const updates = req.body;
+
+    // Không cho sửa các field nhạy cảm
+    const blockedFields = [
+      "role",
+      "parent_id",
+      "org_id",
+      "_id",
+      "createdAt",
+      "updatedAt",
+    ];
+    blockedFields.forEach((f) => delete updates[f]);
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.json({
+        code: 404,
+        message: "User không tồn tại!",
+      });
+    }
+
+    // Nếu muốn đổi email – kiểm tra trùng
+    if (updates.email) {
+      const existEmail = await User.findOne({
+        email: updates.email,
+        _id: { $ne: userId },
+      });
+
+      if (existEmail) {
+        return res.json({
+          code: 400,
+          message: "Email đã tồn tại!",
+        });
+      }
+    }
+
+    // Nếu muốn đổi phone – kiểm tra trùng
+    if (updates.phone) {
+      const existPhone = await User.findOne({
+        phone: updates.phone,
+        _id: { $ne: userId },
+      });
+
+      if (existPhone) {
+        return res.json({
+          code: 400,
+          message: "Số điện thoại đã tồn tại!",
+        });
+      }
+    }
+
+    // Nếu đổi password → hash lại
+    if (updates.password) {
+      if (updates.password.length < 6) {
+        return res.json({
+          code: 400,
+          message: "Mật khẩu phải có ít nhất 6 ký tự!",
+        });
+      }
+      updates.password = await bcrypt.hash(updates.password, 10);
+    }
+
+    // Tiến hành update
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    return res.json({
+      code: 200,
+      message: "Cập nhật thông tin thành công!",
+      user: updatedUser,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      code: 500,
+      message: "Lỗi khi cập nhật thông tin!",
+      error: error.message,
+    });
+  }
+};
+
 // [GET] http://localhost:3000/user/info - Admin/user_manager lấy ra thông tin cá nhân
 module.exports.info = async (req, res) => {
   const user = req.user; // Lấy từ middleware verifyToken
