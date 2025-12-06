@@ -1,7 +1,6 @@
 const RFIDCard = require("../models/rfid.model");
 const User = require("../models/user.model");
 const AccessLog = require("../models/log.model");
-const BiometricData = require("../models/BiometricData");
 const Device = require("../models/device.model");
 const mqttClient = require("../config/mqtt");
 
