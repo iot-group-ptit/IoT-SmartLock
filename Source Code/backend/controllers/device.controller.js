@@ -7,7 +7,8 @@ const mqttClient = require("../config/mqtt"); // ✅ THÊM DÒNG NÀY
 module.exports.registerDevice = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { device_id, type, model, org_id } = req.body;
+    const userOrgId = req.user.org_id;
+    const { device_id, type, model } = req.body;
 
     // ✅ Validation
     if (!device_id || device_id.trim().length === 0) {

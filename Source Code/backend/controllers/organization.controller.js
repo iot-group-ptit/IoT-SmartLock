@@ -1,5 +1,26 @@
 const Organization = require("../models/organization.model");
 
+// [GET] http://localhost:3000/organization - Admin lấy danh sách organizations
+module.exports.getOrganizations = async (req, res) => {
+  try {
+    const organizations = await Organization.find()
+      .select('_id name address')
+      .sort({ name: 1 });
+
+    res.json({
+      code: 200,
+      message: "Lấy danh sách tổ chức thành công!",
+      data: organizations,
+    });
+  } catch (error) {
+    res.status(500).json({
+      code: 500,
+      message: "Lỗi lấy danh sách tổ chức!",
+      error: error.message,
+    });
+  }
+};
+
 // [POST] http://localhost:3000/organization/create - Admin tạo 1 organization
 module.exports.createOrganization = async (req, res) => {
   try {

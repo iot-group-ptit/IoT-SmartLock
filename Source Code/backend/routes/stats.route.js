@@ -14,4 +14,11 @@ router.get(
 
 router.get("/admin", verifyToken, checkRole("admin"), controller.getAdminStats);
 
+router.get(
+  "/organization/:orgId",
+  verifyToken,
+  checkRole("admin"),
+  controller.getOrganizationStats
+);
+
 module.exports = router;
