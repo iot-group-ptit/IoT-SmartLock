@@ -1,11 +1,13 @@
 package com.example.authenx.domain.model
 
+import com.google.gson.annotations.SerializedName
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class Organization(
     @SerialName("_id")
+    @SerializedName("_id")
     val id: String,
     val name: String,
     val address: String? = null,

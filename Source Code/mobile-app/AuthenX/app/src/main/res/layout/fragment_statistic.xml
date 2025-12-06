@@ -50,10 +50,47 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <!-- Organization Spinner for Admin -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardOrganizationSelector"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:visibility="gone"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="2dp"
+        app:layout_constraintTop_toBottomOf="@id/toolbar">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Select Organization"
+                android:textSize="14sp"
+                android:fontFamily="@font/montserrat_semibold"
+                android:textColor="@color/black"
+                android:layout_marginBottom="8dp" />
+
+            <Spinner
+                android:id="@+id/spinnerOrganization"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:padding="8dp" />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintTop_toBottomOf="@id/cardOrganizationSelector"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <LinearLayout
@@ -315,6 +352,32 @@
                     android:padding="8dp" />
 
             </androidx.cardview.widget.CardView>
+
+            <!-- Device Statistics Section (for user_manager) -->
+            <LinearLayout
+                android:id="@+id/layoutDeviceStats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_marginTop="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Device Statistics"
+                    android:textSize="18sp"
+                    android:fontFamily="@font/montserrat_semibold"
+                    android:textColor="@color/black"
+                    android:layout_marginBottom="12dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvDeviceStats"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    tools:itemCount="3"
+                    tools:listitem="@layout/item_device_stats" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"

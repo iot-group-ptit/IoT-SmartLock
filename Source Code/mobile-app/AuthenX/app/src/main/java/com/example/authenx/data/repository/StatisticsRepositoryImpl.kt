@@ -58,4 +58,24 @@ class StatisticsRepositoryImpl @Inject constructor(
             socketManager.connect(baseUrl, token)
         }
     }
+
+    override suspend fun getUserManagerStats(days: Int): com.example.authenx.domain.model.UserManagerStatsResponse {
+        val token = authManager.getToken() ?: throw Exception("Token not found")
+        return statisticsDataSource.getUserManagerStats(token, days)
+    }
+
+    override suspend fun getAdminStats(days: Int): com.example.authenx.domain.model.AdminStatsResponse {
+        val token = authManager.getToken() ?: throw Exception("Token not found")
+        return statisticsDataSource.getAdminStats(token, days)
+    }
+
+    override suspend fun getOrganizations(): com.example.authenx.domain.model.OrganizationListResponse {
+        val token = authManager.getToken() ?: throw Exception("Token not found")
+        return statisticsDataSource.getOrganizations(token)
+    }
+
+    override suspend fun getOrganizationStats(orgId: String): com.example.authenx.domain.model.OrganizationStatsResponse {
+        val token = authManager.getToken() ?: throw Exception("Token not found")
+        return statisticsDataSource.getOrganizationStats(token, orgId)
+    }
 }

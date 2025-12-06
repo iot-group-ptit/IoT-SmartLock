@@ -128,4 +128,14 @@
     <string name="user">User</string>
     <string name="user_name">User name</string>
     <string name="please_scan_your_rfid_card_on_the_reader">Please scan your RFID card on the reader</string>
+    <string name="system_overview">System Overview</string>
+    <string name="total_organizations">Total Organizations</string>
+    <string name="organizations">Organizations</string>
+    <string name="security_alerts">Security Alerts</string>
+    <string name="total_children">Total Children</string>
+    <string name="total_devices">Total Devices</string>
+    <string name="overview">Overview</string>
+    <string name="statistics">Statistics</string>
+    <string name="total_access">Total Access</string>
+    <string name="alerts">Alerts</string>
 </resources>

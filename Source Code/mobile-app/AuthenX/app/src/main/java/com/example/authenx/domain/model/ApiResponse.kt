@@ -60,15 +60,16 @@ data class TopUser(
 
 data class RecentAccess(
     @SerializedName("_id")
-    val id: String,
+    val id: String = "",
     @SerializedName("user_id")
-    val userId: User?,
+    val userId: User? = null,
     @SerializedName("access_method")
-    val accessMethod: String,
-    val result: String,
+    val accessMethod: String = "unknown",
+    val result: String = "unknown",
     @SerializedName("device_id")
-    val deviceId: String?,
-    val time: String
+    val deviceId: String? = null,
+    val time: String = "",
+    val timestamp: String = ""
 )
 
 data class DailyAccess(

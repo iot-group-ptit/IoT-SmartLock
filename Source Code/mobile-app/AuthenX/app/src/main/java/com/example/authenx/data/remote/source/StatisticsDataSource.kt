@@ -18,11 +18,47 @@ class StatisticsDataSource @Inject constructor(
         endDate: String? = null,
         userId: String? = null
     ): StatisticsResponse {
-        return httpClient.get("${ApiService.Companion.BASE_URL}/logs/statistics") {
+        // This endpoint is deprecated, use getUserManagerStats or getAdminStats instead
+        return httpClient.get("${ApiService.Companion.BASE_URL}/stats") {
             bearerAuth(token)
-            startDate?.let { parameter("start_date", it) }
-            endDate?.let { parameter("end_date", it) }
-            userId?.let { parameter("user_id", it) }
+            parameter("days", 7)
+        }.body()
+    }
+
+    suspend fun getUserManagerStats(
+        token: String,
+        days: Int = 7
+    ): com.example.authenx.domain.model.UserManagerStatsResponse {
+        return httpClient.get("${ApiService.Companion.BASE_URL}/stats") {
+            bearerAuth(token)
+            parameter("days", days)
+        }.body()
+    }
+
+    suspend fun getAdminStats(
+        token: String,
+        days: Int = 7
+    ): com.example.authenx.domain.model.AdminStatsResponse {
+        return httpClient.get("${ApiService.Companion.BASE_URL}/stats/admin") {
+            bearerAuth(token)
+            parameter("days", days)
+        }.body()
+    }
+
+    suspend fun getOrganizations(
+        token: String
+    ): com.example.authenx.domain.model.OrganizationListResponse {
+        return httpClient.get("${ApiService.Companion.BASE_URL}/organization") {
+            bearerAuth(token)
+        }.body()
+    }
+
+    suspend fun getOrganizationStats(
+        token: String,
+        orgId: String
+    ): com.example.authenx.domain.model.OrganizationStatsResponse {
+        return httpClient.get("${ApiService.Companion.BASE_URL}/stats/organization/${orgId}") {
+            bearerAuth(token)
         }.body()
     }
 }

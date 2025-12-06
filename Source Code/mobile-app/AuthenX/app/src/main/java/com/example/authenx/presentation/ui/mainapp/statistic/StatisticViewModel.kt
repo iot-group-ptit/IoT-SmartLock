@@ -1,9 +1,15 @@
 package com.example.authenx.presentation.ui.mainapp.statistic
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.authenx.data.local.AuthManager
 import com.example.authenx.domain.model.AccessStatistics
+import com.example.authenx.domain.model.AdminStatsResponse
+import com.example.authenx.domain.model.UserManagerStatsResponse
 import com.example.authenx.domain.usecase.GetStatisticsUseCase
+import com.example.authenx.domain.usecase.statistics.GetAdminStatsUseCase
+import com.example.authenx.domain.usecase.statistics.GetUserManagerStatsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,23 +24,151 @@ import javax.inject.Inject
 data class StatisticUiState(
     val isLoading: Boolean = false,
     val statistics: AccessStatistics? = null,
+    val userManagerStats: UserManagerStatsResponse? = null,
+    val adminStats: AdminStatsResponse? = null,
+    val organizationStats: com.example.authenx.domain.model.OrganizationStatsResponse? = null,
+    val organizations: List<com.example.authenx.domain.model.Organization> = emptyList(),
+    val selectedOrganization: com.example.authenx.domain.model.Organization? = null,
     val error: String? = null,
     val todayCount: Int = 0,
     val weekCount: Int = 0,
     val monthCount: Int = 0,
-    val averagePerDay: Float = 0f
+    val averagePerDay: Float = 0f,
+    val userRole: String? = null
 )
 
 @HiltViewModel
 class StatisticViewModel @Inject constructor(
-    private val getStatisticsUseCase: GetStatisticsUseCase
+    private val getStatisticsUseCase: GetStatisticsUseCase,
+    private val getUserManagerStatsUseCase: GetUserManagerStatsUseCase,
+    private val getAdminStatsUseCase: GetAdminStatsUseCase,
+    private val authManager: AuthManager,
+    private val statisticsRepository: com.example.authenx.domain.repository.StatisticsRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "StatisticViewModel"
+    }
 
     private val _uiState = MutableStateFlow(StatisticUiState())
     val uiState: StateFlow<StatisticUiState> = _uiState.asStateFlow()
 
     init {
-        loadStatistics()
+        val userRole = authManager.getUserRole()
+        Log.d(TAG, "Init: User role = $userRole")
+        _uiState.value = _uiState.value.copy(userRole = userRole)
+        loadRoleBasedStatistics()
+    }
+
+    fun loadRoleBasedStatistics(days: Int = 7) {
+        val role = authManager.getUserRole()
+        Log.d(TAG, "Loading statistics for role: $role, days: $days")
+        when (role) {
+            "admin" -> loadAdminStats(days)
+            "user_manager" -> loadUserManagerStats(days)
+            else -> {
+                Log.w(TAG, "Unknown role: $role, loading default statistics")
+                loadStatistics()
+            }
+        }
+    }
+
+    private fun loadUserManagerStats(days: Int = 7) {
+        viewModelScope.launch {
+            Log.d(TAG, "Starting to load user_manager stats...")
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            
+            getUserManagerStatsUseCase(days)
+                .onSuccess { stats ->
+                    Log.d(TAG, "User manager stats loaded successfully: $stats")
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        userManagerStats = stats,
+                        error = null
+                    )
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Failed to load user manager stats", error)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = error.message ?: "Failed to load statistics"
+                    )
+                }
+        }
+    }
+
+    private fun loadAdminStats(days: Int = 7) {
+        viewModelScope.launch {
+            Log.d(TAG, "Starting to load admin stats...")
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            
+            getAdminStatsUseCase(days)
+                .onSuccess { stats ->
+                    Log.d(TAG, "Admin stats loaded successfully: $stats")
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        adminStats = stats,
+                        error = null
+                    )
+                    // Load organizations list
+                    loadOrganizations()
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Failed to load admin stats", error)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = error.message ?: "Failed to load statistics"
+                    )
+                }
+        }
+    }
+
+    private fun loadOrganizations() {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Loading organizations...")
+                val response = statisticsRepository.getOrganizations()
+                Log.d(TAG, "Organizations loaded: ${response.data.size} orgs")
+                _uiState.value = _uiState.value.copy(
+                    organizations = response.data,
+                    selectedOrganization = response.data.firstOrNull()
+                )
+                // Auto-load first organization stats
+                response.data.firstOrNull()?.let { org ->
+                    loadOrganizationStats(org.id)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load organizations", e)
+            }
+        }
+    }
+
+    fun selectOrganization(organization: com.example.authenx.domain.model.Organization) {
+        Log.d(TAG, "Organization selected: ${organization.name}")
+        _uiState.value = _uiState.value.copy(selectedOrganization = organization)
+        loadOrganizationStats(organization.id)
+    }
+
+    private fun loadOrganizationStats(orgId: String) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Loading stats for organization: $orgId")
+                _uiState.value = _uiState.value.copy(isLoading = true)
+                val stats = statisticsRepository.getOrganizationStats(orgId)
+                Log.d(TAG, "Organization stats loaded: $stats")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    organizationStats = stats,
+                    error = null
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load organization stats", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Failed to load organization statistics"
+                )
+            }
+        }
     }
 
     fun loadStatistics(
@@ -118,6 +252,6 @@ class StatisticViewModel @Inject constructor(
     }
 
     fun refresh() {
-        loadStatistics()
+        loadRoleBasedStatistics()
     }
 }

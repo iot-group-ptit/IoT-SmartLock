@@ -100,7 +100,8 @@
     <fragment
         android:id="@+id/statisticFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.statistic.StatisticFragment"
-        android:label="StatisticFragment" />
+        android:label="StatisticFragment"
+        tools:layout="@layout/fragment_statistic" />
     <fragment
         android:id="@+id/userManagementFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.user_management.UserManagementFragment"
