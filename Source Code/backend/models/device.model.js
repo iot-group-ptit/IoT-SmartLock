@@ -35,6 +35,11 @@ const deviceSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    user_id: {
+      type: String,
+      ref: "User",
+      required: true,
+    },
     org_id: {
       type: String,
       ref: "Organization",

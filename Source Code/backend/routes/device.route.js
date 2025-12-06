@@ -3,10 +3,15 @@ const router = express.Router();
 
 const controller = require("../controllers/device.controller");
 const verifyToken = require("../middleware/verifyToken");
+const checkRole = require("../middleware/checkRole");
 
-// ✅ Bước 1: Admin tạo device (từ app)
 router.post("/register", verifyToken, controller.registerDevice);
 
-router.get("/ca-certificate", controller.getCACertificate);
+router.get(
+  "/my-devices",
+  verifyToken,
+  checkRole("user_manager"),
+  controller.getMyDevices
+);
 
 module.exports = router;
