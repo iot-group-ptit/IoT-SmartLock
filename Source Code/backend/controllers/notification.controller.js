@@ -2,32 +2,26 @@ const Notification = require("../models/notification.model");
 const Device = require("../models/device.model");
 const AccessLog = require("../models/log.model");
 
-//[GET] http://localhost:3000/notifications - Lấy tất cả notification của user_manager
+//[GET] http://localhost:3000/notification - Lấy tất cả notification của user_manager
 module.exports.getAllNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { page = 1, limit = 20, type, isRead } = req.query;
 
-    // Build query
-    const query = { user_id: userId };
-
-    if (type) {
-      query.notification_type = type;
-    }
-
-    if (isRead !== undefined) {
-      query.is_read = isRead === "true";
-    }
-
-    // Đếm tổng số
-    const total = await Notification.countDocuments(query);
+    // Đếm tổng số thông báo
+    const total = await Notification.countDocuments({ user_id: userId });
 
     // Lấy toàn bộ notifications
-    const notifications = await Notification.find(query)
+    const notifications = await Notification.find({ user_id: userId })
       .sort({ created_at: -1 }) // mới nhất lên trước
       .lean();
 
-    // Đếm số lượng chưa đọc
+    notifications.forEach((noti) => {
+      if (noti.metadata && noti.metadata.alertPayload) {
+        delete noti.metadata.alertPayload;
+      }
+    });
+
+    // Đếm số chưa đọc
     const unreadCount = await Notification.countDocuments({
       user_id: userId,
       is_read: false,
@@ -36,8 +30,9 @@ module.exports.getAllNotifications = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        notifications,
+        total,
         unreadCount,
+        notifications,
       },
     });
   } catch (error) {
@@ -49,42 +44,7 @@ module.exports.getAllNotifications = async (req, res) => {
   }
 };
 
-//[PATCH] http://localhost:3000/notification/:notificationId/read - Đánh dấu một notification đã đọc
-module.exports.markAsRead = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { notificationId } = req.params;
-
-    const notification = await Notification.findOne({
-      _id: notificationId,
-      user_id: userId,
-    });
-
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy thông báo",
-      });
-    }
-
-    notification.is_read = true;
-    await notification.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Đã đánh dấu đã đọc",
-      data: notification,
-    });
-  } catch (error) {
-    console.error("Lỗi đánh dấu đã đọc:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi đánh dấu thông báo",
-    });
-  }
-};
-
-// [DELETE] http://localhost:3000/notification/:notificationId - Xóa một notification
+// [DELETE] http://localhost:3000/notification/:notificationId - user_manager xóa một notification
 module.exports.deleteNotification = async (req, res) => {
   try {
     const userId = req.user.id;

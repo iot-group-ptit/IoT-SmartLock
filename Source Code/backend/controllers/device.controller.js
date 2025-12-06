@@ -6,6 +6,7 @@ const mqttClient = require("../config/mqtt"); // ✅ THÊM DÒNG NÀY
 // [POST] http://localhost:3000/device/register - User_manager đăng ký thiết bị mới
 module.exports.registerDevice = async (req, res) => {
   try {
+    const userId = req.user.id;
     const { device_id, type, model, org_id } = req.body;
 
     // ✅ Validation
@@ -36,14 +37,6 @@ module.exports.registerDevice = async (req, res) => {
           existing.provisioning_token = newToken;
           existing.provisioning_token_expires = newExpires;
           await existing.save();
-
-          //   // ✅ SỬA: Gửi token mới xuống ESP32
-          //   mqttClient.publish(mqttClient.topics.DEVICE_PROVISION_TOKEN, {
-          //     device_id,
-          //     provisioning_token: newToken,
-          //     expires_at: newExpires.toISOString(),
-          //   });
-          //   console.log("✓ Đã gửi token MỚI xuống ESP32 (token cũ hết hạn)");
 
           // ✅ SỬA: GỬI TOKEN LÊN TOPIC RIÊNG CỦA DEVICE
           const deviceTopic = `smartlock/device/${device_id}/provision/token`;
@@ -82,6 +75,7 @@ module.exports.registerDevice = async (req, res) => {
       device_id,
       type: type || "smart_lock",
       model: model || "ESP32_v1",
+      user_id: userId,
       org_id,
       status: "pending",
       provisioning_token: provisioningToken,
@@ -105,14 +99,6 @@ module.exports.registerDevice = async (req, res) => {
 
     // Delay nhỏ để ESP32 xử lý CA cert
     await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // // ✅ SỬA: GỬI TOKEN XUỐNG ESP32 QUA MQTT
-    // mqttClient.publish(mqttClient.topics.DEVICE_PROVISION_TOKEN, {
-    //   device_id,
-    //   provisioning_token: provisioningToken,
-    //   expires_at: tokenExpires.toISOString(),
-    // });
-    // console.log("✓ Đã gửi token xuống ESP32");
 
     // ✅ SỬA: GỬI TOKEN LÊN TOPIC RIÊNG CỦA DEVICE
     const deviceTopic = `smartlock/device/${device_id}/provision/token`;
@@ -149,27 +135,27 @@ module.exports.registerDevice = async (req, res) => {
   }
 };
 
-// ============================================
-// THÊM API ĐỂ LẤY CA CERTIFICATE (TÙY CHỌN)
-// ============================================
-
-// File: device.controller.js
-
-module.exports.getCACertificate = async (req, res) => {
+// [GET] http://localhost:3000/device/my-devices - Lấy ra các thiết bị mà user_manager quản lý
+module.exports.getMyDevices = async (req, res) => {
   try {
-    const certificateService = require("../services/certificate.service");
-    const caCertPem = certificateService.getCACertificate();
+    const user = req.user;
 
-    res.json({
+    const devices = await Device.find({
+      user_id: user.id,
+    })
+      .select("device_id type model status last_seen createdAt")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
       success: true,
-      ca_certificate: caCertPem,
+      count: devices.length,
+      data: devices,
     });
   } catch (error) {
-    console.error("Lỗi lấy CA certificate:", error);
+    console.error("❌ Lỗi lấy danh sách thiết bị:", error);
     res.status(500).json({
       success: false,
-      message: "Không thể lấy CA certificate",
-      error: error.message,
+      message: "Lỗi server khi lấy danh sách thiết bị",
     });
   }
 };

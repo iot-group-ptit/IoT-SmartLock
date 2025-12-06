@@ -5,13 +5,20 @@ const verifyToken = require("../middleware/verifyToken");
 const checkRole = require("../middleware/checkRole");
 
 // Lấy tất cả notification của user_manager
-router.get("/", verifyToken, controller.getAllNotifications);
-
-// Đánh dấu đã đọc một notification
-router.patch("/:notificationId/read", verifyToken, controller.markAsRead);
+router.get(
+  "/",
+  verifyToken,
+  checkRole("user_manager"),
+  controller.getAllNotifications
+);
 
 // Xóa một notification
-router.delete("/:notificationId", verifyToken, controller.deleteNotification);
+router.delete(
+  "/:notificationId",
+  verifyToken,
+  checkRole("user_manager"),
+  controller.deleteNotification
+);
 
 // Lấy thống kê cảnh báo
 router.get(
