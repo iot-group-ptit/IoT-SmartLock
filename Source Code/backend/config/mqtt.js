@@ -5,6 +5,12 @@ const Fingerprint = require("../models/fingerprint.model");
 const User = require("../models/user.model");
 const Device = require("../models/device.model");
 const securityAlertService = require("../services/securityAlert.service");
+// ✅ DEBUG
+console.log("Type of securityAlertService:", typeof securityAlertService);
+console.log(
+  "Has checkFailedAttempts?",
+  typeof securityAlertService.checkFailedAttempts
+);
 const certificateService = require("../services/certificate.service");
 const crypto = require("crypto");
 
