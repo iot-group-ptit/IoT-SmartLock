@@ -4,6 +4,13 @@ const controller = require("../controllers/organization.controller");
 const verifyToken = require("../middleware/verifyToken");
 const checkRole = require("../middleware/checkRole");
 
+router.get(
+  "/",
+  verifyToken,
+  checkRole("admin"),
+  controller.getOrganizations
+);
+
 router.post(
   "/create",
   verifyToken,

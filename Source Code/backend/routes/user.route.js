@@ -34,4 +34,11 @@ router.delete(
   controller.deleteUser
 );
 
+router.patch(
+  "/update",
+  verifyToken,
+  checkRole("user_manager", "admin"),
+  controller.updateProfile
+);
+
 module.exports = router;
