@@ -108,6 +108,7 @@ class UserManagementFragment : Fragment() {
             .setMessage("Are you sure you want to delete ${user.fullName}?\nThis action cannot be undone.")
             .setPositiveButton("Delete") { dialog, _ ->
                 viewModel.deleteUser(user.id)
+                Toast.makeText(requireContext(), "✅ ${user.fullName} deleted successfully", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel") { dialog, _ ->
@@ -234,11 +235,6 @@ class UserManagementFragment : Fragment() {
             if (state.filteredUsers.isEmpty() && !state.isLoading) View.VISIBLE else View.GONE
         binding.rvUsers.visibility = 
             if (state.filteredUsers.isEmpty() && !state.isLoading) View.GONE else View.VISIBLE
-        
-        // Show error if any
-        state.error?.let { error ->
-            Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun setOnClickListener() {

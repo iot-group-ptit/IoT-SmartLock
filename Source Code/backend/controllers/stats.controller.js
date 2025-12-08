@@ -70,7 +70,7 @@ module.exports.getOverviewStats = async (req, res) => {
       });
 
       const alertCount = await Notification.countDocuments({
-        "metadata.device_id": device.device_id,
+        "metadata.deviceId": device.device_id,
         notification_type: "security_alert",
       });
 
@@ -233,7 +233,7 @@ module.exports.getAdminStats = async (req, res) => {
 
       org.total_alerts = await Notification.countDocuments({
         notification_type: "security_alert",
-        "metadata.device_id": { $in: deviceIds },
+        "metadata.deviceId": { $in: deviceIds },
       });
     }
 
@@ -277,7 +277,7 @@ module.exports.getAdminStats = async (req, res) => {
       },
       {
         $group: {
-          _id: "$metadata.device_id",
+          _id: "$metadata.deviceId",
           count: { $sum: 1 },
         },
       },
@@ -399,7 +399,7 @@ module.exports.getOrganizationStats = async (req, res) => {
       });
 
       const alertCount = await Notification.countDocuments({
-        "metadata.device_id": device.device_id,
+        "metadata.deviceId": device.device_id,
         notification_type: "security_alert",
       });
 

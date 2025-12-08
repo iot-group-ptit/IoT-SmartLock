@@ -84,7 +84,7 @@ class CreateUserFragment : Fragment() {
             
             Toast.makeText(
                 requireContext(),
-                "✅ Tạo user ${state.createdUserName} thành công!",
+                "✅ User ${state.createdUserName} created successfully!",
                 Toast.LENGTH_LONG
             ).show()
             

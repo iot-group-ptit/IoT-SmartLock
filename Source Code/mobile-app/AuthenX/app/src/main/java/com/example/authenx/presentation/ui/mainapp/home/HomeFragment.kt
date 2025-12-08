@@ -59,6 +59,7 @@ class HomeFragment : Fragment() {
     
     private fun setupAdminUI() {
         // Admin can see everything
+        binding.btnRegisterFace.visibility = View.GONE
         binding.btnStatistic.visibility = View.VISIBLE
         binding.btnManageUsers.visibility = View.VISIBLE
         binding.btnCreateOrganization.visibility = View.VISIBLE

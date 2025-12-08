@@ -102,12 +102,14 @@ class SocketManager @Inject constructor() {
         socket?.on("user_manager_created", listener)
         socket?.on("user_updated", listener)
         socket?.on("user_deleted", listener)
+        socket?.on("user_manager_deleted", listener)
         
         awaitClose {
             socket?.off("user_created", listener)
             socket?.off("user_manager_created", listener)
             socket?.off("user_updated", listener)
             socket?.off("user_deleted", listener)
+            socket?.off("user_manager_deleted", listener)
         }
     }
     

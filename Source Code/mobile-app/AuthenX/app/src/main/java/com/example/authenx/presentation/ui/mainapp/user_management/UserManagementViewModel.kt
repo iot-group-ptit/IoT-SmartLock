@@ -7,6 +7,7 @@ import com.example.authenx.domain.model.User
 import com.example.authenx.domain.usecase.DeleteUserUseCase
 import com.example.authenx.domain.usecase.GetAllUsersUseCase
 import com.example.authenx.domain.repository.BiometricRepository
+import com.example.authenx.data.remote.socket.SocketManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -31,7 +32,8 @@ class UserManagementViewModel @Inject constructor(
     private val getAllUsersUseCase: GetAllUsersUseCase,
     private val deleteUserUseCase: DeleteUserUseCase,
     private val biometricRepository: BiometricRepository,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val socketManager: SocketManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserManagementUiState(isLoading = true))
@@ -41,6 +43,17 @@ class UserManagementViewModel @Inject constructor(
         val currentRole = authManager.getUserRole() ?: ""
         _uiState.update { it.copy(currentUserRole = currentRole) }
         observeUsers()
+        observeSocketEvents()
+    }
+
+    private fun observeSocketEvents() {
+        viewModelScope.launch {
+            socketManager.onUserChanged().collect {
+                android.util.Log.d("UserManagementVM", "🔔 Socket event: User list changed, refreshing...")
+                // Trigger refresh by re-collecting users
+                observeUsers()
+            }
+        }
     }
 
     private fun observeUsers() {
@@ -121,14 +134,17 @@ class UserManagementViewModel @Inject constructor(
     fun deleteUser(userId: String) {
         viewModelScope.launch {
             try {
+                android.util.Log.d("UserManagementVM", "Deleting user: $userId")
                 val success = deleteUserUseCase(userId)
                 if (success) {
-                    _uiState.update { it.copy(error = "User deleted successfully") }
+                    android.util.Log.d("UserManagementVM", "✅ User deleted successfully")
                 } else {
+                    android.util.Log.e("UserManagementVM", "❌ Failed to delete user")
                     _uiState.update { it.copy(error = "Failed to delete user") }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "Delete failed") }
+                android.util.Log.e("UserManagementVM", "❌ Error deleting user: ${e.message}")
+                _uiState.update { it.copy(error = e.message ?: "Failed to delete user") }
             }
         }
     }

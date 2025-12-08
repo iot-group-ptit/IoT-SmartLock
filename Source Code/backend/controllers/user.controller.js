@@ -76,7 +76,7 @@ module.exports.register = async (req, res) => {
         console.log(`🔍 Event data:`, userResponse);
         
         global.io.to(adminRoomName).emit("user_manager_created", {
-          message: "Tạo user_manager thành công!",
+          message: "User manager created successfully!",
           user: userResponse,
         });
 
@@ -387,7 +387,7 @@ module.exports.createUser = async (req, res) => {
       console.log(`🔍 Event data:`, userResponse);
       
       global.io.to(roomName).emit("user_created", {
-        message: "Tạo user thành công!",
+        message: "User created successfully!",
         user: userResponse,
       });
 
@@ -511,6 +511,25 @@ module.exports.deleteUser = async (req, res) => {
 
     // 4. Tiến hành xoá
     await User.findByIdAndDelete(userId);
+
+    // ✅ Gửi thông báo realtime qua Socket.IO
+    if (global.io) {
+      // Gửi tới user_manager (nếu xóa user thường) hoặc admin (nếu xóa user_manager)
+      if (user.role === "user" && user.parent_id) {
+        const roomName = `user_${user.parent_id}`;
+        global.io.to(roomName).emit("user_deleted", {
+          message: "User deleted successfully",
+          userId: userId,
+        });
+        console.log(`✅ Socket emitted: user_deleted to ${roomName}`);
+      } else if (user.role === "user_manager") {
+        global.io.to("role_admin").emit("user_manager_deleted", {
+          message: "User manager deleted successfully",
+          userId: userId,
+        });
+        console.log(`✅ Socket emitted: user_manager_deleted to role_admin`);
+      }
+    }
 
     return res.json({
       code: 200,
