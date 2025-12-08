@@ -197,6 +197,38 @@ module.exports.deleteDevice = async (req, res) => {
       });
     }
 
+    // ✅ 1. XÓA SESSION MQTT
+    if (mqttClient.deviceSessions.has(device_id)) {
+      mqttClient.deviceSessions.delete(device_id);
+      console.log(`✓ Đã xóa MQTT session cho device ${device_id}`);
+
+      // Gửi thông báo disconnect xuống ESP32
+      mqttClient.publish(`smartlock/device/${device_id}/disconnect`, {
+        device_id,
+        reason: "Device deleted by admin",
+        action: "clear_credentials",
+      });
+    }
+
+    // ✅ 2. XÓA THÔNG TIN XÁC THỰC KHỎI SPIFFS ESP32
+    // Gửi lệnh xóa credentials xuống ESP32 (nếu online)
+    mqttClient.publish(`smartlock/device/${device_id}/control`, {
+      action: "factory_reset",
+      reason: "Device deleted from server",
+      clear_files: ["/device_cert.pem", "/ca_cert.pem"],
+    });
+
+    // ✅ 3. XÓA CÁC DỮ LIỆU LIÊN QUAN
+    // Xóa RFID cards
+    const RFIDCard = require("../models/rfid.model");
+    await RFIDCard.deleteMany({ device_id });
+    console.log(`✓ Đã xóa RFID cards của device ${device_id}`);
+
+    // Xóa fingerprints
+    const Fingerprint = require("../models/fingerprint.model");
+    await Fingerprint.deleteMany({ device_id });
+    console.log(`✓ Đã xóa fingerprints của device ${device_id}`);
+
     // Xóa device
     await Device.deleteOne({ device_id });
 
