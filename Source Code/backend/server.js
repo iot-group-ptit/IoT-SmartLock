@@ -53,27 +53,27 @@ route(app);
 // Socket.IO connection
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
-  
+
   socket.on("authenticate", (data) => {
     // Join user room
     if (data.userId) {
       socket.join(`user_${data.userId}`);
       console.log(`Socket ${socket.id} joined user_${data.userId}`);
     }
-    
+
     // Join organization room (for user_manager)
     if (data.orgId) {
       socket.join(`org_${data.orgId}`);
       console.log(`Socket ${socket.id} joined org_${data.orgId}`);
     }
-    
+
     // Join role room (for admin)
     if (data.role) {
       socket.join(`role_${data.role}`);
       console.log(`Socket ${socket.id} joined role_${data.role}`);
     }
   });
-  
+
   socket.on("disconnect", () => console.log("Client disconnected:", socket.id));
 });
 

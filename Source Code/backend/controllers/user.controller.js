@@ -302,12 +302,39 @@ module.exports.updateProfile = async (req, res) => {
 
 // [GET] http://localhost:3000/user/info - Admin/user_manager lấy ra thông tin cá nhân
 module.exports.info = async (req, res) => {
-  const user = req.user; // Lấy từ middleware verifyToken
-  res.json({
-    code: 200,
-    message: "Lấy thông tin user thành công",
-    user,
-  });
+  try {
+    const userId = req.user.id; // Lấy từ middleware verifyToken
+
+    // Query lại từ database để lấy đầy đủ thông tin
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        code: 404,
+        message: "Không tìm thấy user",
+      });
+    }
+
+    res.json({
+      code: 200,
+      message: "Lấy thông tin user thành công",
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        phone: user.phone,
+        role: user.role,
+        org_id: user.org_id,
+        created_at: user.createdAt,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      code: 500,
+      message: "Lỗi khi lấy thông tin user",
+      error: error.message,
+    });
+  }
 };
 
 // [POST] http://localhost:3000/user/create - user_manager tạo tài khoản user
@@ -389,6 +416,9 @@ module.exports.createUser = async (req, res) => {
 // [GET] http://localhost:3000/user/children - Lấy tất cả user nằm dưới quyền của user_manager (hoặc admin)
 module.exports.getChildrenUsers = async (req, res) => {
   try {
+    const Fingerprint = require("../models/fingerprint.model");
+    const RFIDCard = require("../models/rfid.model");
+
     const currentUser = req.user; // token decode
     let users = [];
 
@@ -409,11 +439,39 @@ module.exports.getChildrenUsers = async (req, res) => {
         message: "Bạn không có quyền truy cập!",
       });
     }
+
+    // ✅ Thêm thông tin fingerprint và RFID cho mỗi user
+    const usersWithBiometric = await Promise.all(
+      users.map(async (user) => {
+        const userObj = user.toObject();
+
+        // Lấy fingerprint của user
+        const fingerprints = await Fingerprint.find({ user_id: user._id });
+        userObj.fingerprints = fingerprints.map((fp) => ({
+          id: fp._id,
+          fingerprintId: fp.fingerprint_id,
+          deviceId: fp.device_id,
+          createdAt: fp.createdAt,
+        }));
+
+        // Lấy RFID của user
+        const rfidCards = await RFIDCard.find({ user_id: user._id });
+        userObj.rfidCards = rfidCards.map((card) => ({
+          id: card._id,
+          cardUid: card.uid,
+          deviceId: card.device_id,
+          createdAt: card.createdAt,
+        }));
+
+        return userObj;
+      })
+    );
+
     return res.json({
       code: 200,
       message: "Lấy danh sách user thành công!",
-      count: users.length,
-      users: users,
+      count: usersWithBiometric.length,
+      users: usersWithBiometric,
     });
   } catch (error) {
     return res.status(500).json({

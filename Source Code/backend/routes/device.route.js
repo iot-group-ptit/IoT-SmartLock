@@ -14,4 +14,6 @@ router.get(
   controller.getMyDevices
 );
 
+router.delete("/:device_id", verifyToken, controller.deleteDevice);
+
 module.exports = router;

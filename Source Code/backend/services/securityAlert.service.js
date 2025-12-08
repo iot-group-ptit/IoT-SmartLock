@@ -6,7 +6,7 @@ const Notification = require("../models/notification.model");
 class SecurityAlertService {
   constructor() {
     this.FAILED_ATTEMPTS_THRESHOLD = 3; // Số lần thất bại tối đa
-    this.TIME_WINDOW_MINUTES = 3; // Khoảng thời gian kiểm tra (phút)
+    this.TIME_WINDOW_MINUTES = 1; // Khoảng thời gian kiểm tra (phút)
     this.deviceAlertCache = new Map(); // Cache để tránh spam cảnh báo
   }
 
@@ -44,23 +44,23 @@ class SecurityAlertService {
       if (failedAttempts >= this.FAILED_ATTEMPTS_THRESHOLD) {
         // Kiểm tra xem đã gửi cảnh báo gần đây chưa (tránh spam)
         const lastAlertTime = this.deviceAlertCache.get(deviceId);
-        const shouldSendAlert =
-          !lastAlertTime ||
-          now.getTime() - lastAlertTime.getTime() > 5 * 60 * 1000; // 5 phút giữa các cảnh báo
+        // const shouldSendAlert =
+        //   !lastAlertTime ||
+        //   now.getTime() - lastAlertTime.getTime() > 5 * 60 * 1000; // 5 phút giữa các cảnh báo
 
-        if (shouldSendAlert) {
-          await this.sendSecurityAlert(
-            deviceId,
-            failedAttempts,
-            timeWindowStart,
-            now
-          );
-          this.deviceAlertCache.set(deviceId, now);
-        } else {
-          console.log(
-            `⏭️ Bỏ qua cảnh báo (đã gửi gần đây cho device ${deviceId})`
-          );
-        }
+        // if (shouldSendAlert) {
+        await this.sendSecurityAlert(
+          deviceId,
+          failedAttempts,
+          timeWindowStart,
+          now
+        );
+        this.deviceAlertCache.set(deviceId, now);
+        // } else {
+        //   console.log(
+        //     `⏭️ Bỏ qua cảnh báo (đã gửi gần đây cho device ${deviceId})`
+        //   );
+        // }
       }
     } catch (error) {
       console.error("❌ Lỗi kiểm tra failed attempts:", error);
@@ -74,6 +74,7 @@ class SecurityAlertService {
    * @param {Date} startTime - Thời điểm bắt đầu
    * @param {Date} endTime - Thời điểm kết thúc
    */
+
   async sendSecurityAlert(deviceId, failedCount, startTime, endTime) {
     try {
       console.log(
@@ -162,15 +163,31 @@ class SecurityAlertService {
 
       // 7. Gửi cảnh báo realtime qua Socket.IO
       if (global.io) {
-        global.io.to(`user_${manager._id}`).emit("security_alert", {
-          ...alertPayload,
-          notificationId: savedNotifications.find(
-            (n) => n.user_id === manager._id.toString()
-          )?.id,
-        });
+        // Format phù hợp với Android SecurityAlertEvent
+        const alertData = {
+          notificationId:
+            savedNotifications.find((n) => n.user_id === manager._id.toString())
+              ?.id || notification.id,
+          deviceId: deviceId,
+          method: failedLogs[0]?.access_method || "unknown",
+          attemptCount: failedCount,
+          message: alertMessage,
+          timestamp: new Date().toISOString(),
+          // Thêm thông tin bổ sung
+          deviceName: device.type || "Smart Lock",
+          severity: "high",
+          details: failedLogs.slice(0, 3).map((log) => ({
+            method: log.access_method,
+            time: log.createdAt,
+            reason: log.additional_info,
+          })),
+        };
+
+        global.io.to(`user_${manager._id}`).emit("security_alert", alertData);
         console.log(
           `📤 Đã gửi realtime alert đến user_manager: ${manager.fullName}`
         );
+        console.log(`📦 Alert data:`, JSON.stringify(alertData, null, 2));
       } else {
         console.log("⚠️ Socket.IO chưa được khởi tạo");
       }

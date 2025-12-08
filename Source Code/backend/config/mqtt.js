@@ -125,7 +125,6 @@ class MQTTService {
       this.topics.ENROLL_SUCCESS,
       this.topics.ENROLL_FAILED,
       this.topics.DELETE_FINGERPRINT_RESULT,
-      //   this.topics.AUTH_REQUEST,
       this.topics.DEVICE_PROVISION_REQUEST,
       this.topics.DEVICE_FINALIZE_REQUEST,
       "smartlock/device/+/request_ca_cert",
@@ -368,16 +367,6 @@ class MQTTService {
       console.log("✓ Session token:", sessionToken.substring(0, 16) + "...");
       console.log("✓ Status sau khi login:", device.status);
       console.log("✓ Phương thức: X.509 Certificate Signature");
-
-      //   // ✅ Gửi response
-      //   this.publish(this.topics.DEVICE_LOGIN_RESPONSE, {
-      //     device_id,
-      //     success: true,
-      //     session_token: sessionToken,
-      //     message: "Login successful",
-      //     timestamp: new Date().toISOString(),
-      //     auth_method: "x509_signature",
-      //   });
 
       // ✅ Gửi response (QUAN TRỌNG: Kiểm tra payload size)
       const responsePayload = {
@@ -648,14 +637,6 @@ class MQTTService {
         }
       }
 
-      //   let additionalInfo = data.reason || "";
-      //   if (method === "face" && data.success) {
-      //     additionalInfo =
-      //       data.method === "remote" || data.method === "face_app"
-      //         ? "Face recognition unlock via mobile app"
-      //         : "Face recognition unlock";
-      //   }
-
       const log = await AccessLog.create({
         access_method: method,
         result: data.success ? "success" : "failed",
@@ -822,7 +803,7 @@ class MQTTService {
           timestamp: new Date().toISOString(),
         });
 
-        // ✅ SỬA: Lưu log với userId đúng format
+        // ✅ Lưu log với userId đúng format
         await this.saveAccessLog({
           method: "rfid",
           data: {
@@ -1478,11 +1459,6 @@ class MQTTService {
 
       console.log("✓ Chữ ký hợp lệ!");
 
-      // Tạo certificate
-      //   const certificate = this.generateCertificate(
-      //     device_id,
-      //     device.public_key
-      //   );
       const result = await certificateService.issueDeviceCertificate(
         device_id,
         device.public_key
