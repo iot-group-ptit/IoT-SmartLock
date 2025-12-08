@@ -1,11 +1,14 @@
 const Device = require("../models/device.model");
 const AccessLog = require("../models/log.model");
+const Organization = require("../models/organization.model");
 const crypto = require("crypto");
 const mqttClient = require("../config/mqtt"); // ✅ THÊM DÒNG NÀY
 
 // [POST] http://localhost:3000/device/register - User_manager đăng ký thiết bị mới
 module.exports.registerDevice = async (req, res) => {
   try {
+    console.log(req.user);
+    console.log(req.user.org_id);
     const userId = req.user.id;
     const userOrgId = req.user.org_id;
     const { device_id, type, model } = req.body;
@@ -15,6 +18,15 @@ module.exports.registerDevice = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "device_id không được để trống",
+      });
+    }
+
+    const organization = await Organization.findById(userOrgId);
+
+    if (!organization) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization không tồn tại!",
       });
     }
 
@@ -77,7 +89,7 @@ module.exports.registerDevice = async (req, res) => {
       type: type || "smart_lock",
       model: model || "ESP32_v1",
       user_id: userId,
-      org_id,
+      org_id: userOrgId,
       status: "pending",
       provisioning_token: provisioningToken,
       provisioning_token_expires: tokenExpires,

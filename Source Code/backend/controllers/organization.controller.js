@@ -4,7 +4,7 @@ const Organization = require("../models/organization.model");
 module.exports.getOrganizations = async (req, res) => {
   try {
     const organizations = await Organization.find()
-      .select('_id name address')
+      .select("_id name address")
       .sort({ name: 1 });
 
     res.json({
@@ -39,6 +39,7 @@ module.exports.createOrganization = async (req, res) => {
       organization: newOrg,
     });
   } catch (error) {
+    console.log(error.message);
     res.status(500).json({
       code: 500,
       message: "Lỗi tạo Organization!",

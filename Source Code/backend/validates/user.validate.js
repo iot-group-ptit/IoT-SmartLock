@@ -28,6 +28,13 @@ module.exports.register = (req, res, next) => {
     message = "Số điện thoại không hợp lệ!";
   }
 
+  if (message) {
+    return res.status(400).json({
+      code: 400,
+      message,
+    });
+  }
+
   next();
 };
 

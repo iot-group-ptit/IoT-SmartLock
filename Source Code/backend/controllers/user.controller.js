@@ -24,12 +24,10 @@ module.exports.register = async (req, res) => {
 
     const existEmail = await User.findOne({
       email: req.body.email,
-      deleted: false,
     });
 
     const existPhone = await User.findOne({
       phone: req.body.phone,
-      deleted: false,
     });
 
     if (existEmail) {
@@ -103,6 +101,7 @@ module.exports.login = async (req, res) => {
         id: user._id,
         email: user.email,
         role: user.role,
+        org_id: user.org_id,
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES }
@@ -116,6 +115,7 @@ module.exports.login = async (req, res) => {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
+        org_id: user.org_id,
         role: user.role,
       },
     });
@@ -142,7 +142,7 @@ module.exports.updateProfile = async (req, res) => {
     const userId = req.user.id;
     const updates = req.body;
 
-    // Không cho sửa các field nhạy cảm
+    //  Không cho sửa các field nhạy cảm
     const blockedFields = [
       "role",
       "parent_id",
@@ -162,28 +162,65 @@ module.exports.updateProfile = async (req, res) => {
       });
     }
 
-    // Nếu muốn đổi email – kiểm tra trùng
-    if (updates.email) {
-      const existEmail = await User.findOne({
-        email: updates.email,
-        _id: { $ne: userId },
-      });
-
-      if (existEmail) {
+    // -------------------------
+    // 🔐 CHECK ĐỔI MẬT KHẨU
+    // -------------------------
+    if (updates.oldPassword || updates.newPassword || updates.confirmPassword) {
+      // Phải nhập đủ 3 trường
+      if (
+        !updates.oldPassword ||
+        !updates.newPassword ||
+        !updates.confirmPassword
+      ) {
         return res.json({
           code: 400,
-          message: "Email đã tồn tại!",
+          message:
+            "Vui lòng nhập đầy đủ oldPassword, newPassword và confirmPassword!",
         });
       }
+
+      // 1. Check mật khẩu cũ đúng không
+      const isMatch = await bcrypt.compare(updates.oldPassword, user.password);
+      if (!isMatch) {
+        return res.json({
+          code: 400,
+          message: "Mật khẩu cũ không đúng!",
+        });
+      }
+
+      // 2. Mật khẩu mới phải khớp confirmPassword
+      if (updates.newPassword !== updates.confirmPassword) {
+        return res.json({
+          code: 400,
+          message: "Mật khẩu mới và xác nhận mật khẩu không khớp!",
+        });
+      }
+
+      // 3. Kiểm tra độ dài
+      if (updates.newPassword.length < 6) {
+        return res.json({
+          code: 400,
+          message: "Mật khẩu mới phải có ít nhất 6 ký tự!",
+        });
+      }
+
+      // 4. Hash password mới
+      updates.password = await bcrypt.hash(updates.newPassword, 10);
+
+      // Xóa các field không cần lưu
+      delete updates.oldPassword;
+      delete updates.newPassword;
+      delete updates.confirmPassword;
     }
 
-    // Nếu muốn đổi phone – kiểm tra trùng
+    // -------------------------
+    // 📞 CHECK ĐỔI SĐT
+    // -------------------------
     if (updates.phone) {
       const existPhone = await User.findOne({
         phone: updates.phone,
         _id: { $ne: userId },
       });
-
       if (existPhone) {
         return res.json({
           code: 400,
@@ -192,18 +229,25 @@ module.exports.updateProfile = async (req, res) => {
       }
     }
 
-    // Nếu đổi password → hash lại
-    if (updates.password) {
-      if (updates.password.length < 6) {
+    // -------------------------
+    // 📧 CHECK ĐỔI EMAIL
+    // -------------------------
+    if (updates.email) {
+      const existEmail = await User.findOne({
+        email: updates.email,
+        _id: { $ne: userId },
+      });
+      if (existEmail) {
         return res.json({
           code: 400,
-          message: "Mật khẩu phải có ít nhất 6 ký tự!",
+          message: "Email đã tồn tại!",
         });
       }
-      updates.password = await bcrypt.hash(updates.password, 10);
     }
 
-    // Tiến hành update
+    // -------------------------
+    // 🚀 TIẾN HÀNH UPDATE
+    // -------------------------
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: updates },
@@ -301,7 +345,6 @@ module.exports.getChildrenUsers = async (req, res) => {
         message: "Bạn không có quyền truy cập!",
       });
     }
-
     return res.json({
       code: 200,
       message: "Lấy danh sách user thành công!",
