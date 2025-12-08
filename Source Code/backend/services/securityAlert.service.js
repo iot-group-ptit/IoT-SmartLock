@@ -6,7 +6,7 @@ const Notification = require("../models/notification.model");
 class SecurityAlertService {
   constructor() {
     this.FAILED_ATTEMPTS_THRESHOLD = 3; // Số lần thất bại tối đa
-    this.TIME_WINDOW_MINUTES = 3; // Khoảng thời gian kiểm tra (phút)
+    this.TIME_WINDOW_MINUTES = 1; // Khoảng thời gian kiểm tra (phút)
     this.deviceAlertCache = new Map(); // Cache để tránh spam cảnh báo
   }
 
@@ -44,23 +44,23 @@ class SecurityAlertService {
       if (failedAttempts >= this.FAILED_ATTEMPTS_THRESHOLD) {
         // Kiểm tra xem đã gửi cảnh báo gần đây chưa (tránh spam)
         const lastAlertTime = this.deviceAlertCache.get(deviceId);
-        const shouldSendAlert =
-          !lastAlertTime ||
-          now.getTime() - lastAlertTime.getTime() > 5 * 60 * 1000; // 5 phút giữa các cảnh báo
+        // const shouldSendAlert =
+        //   !lastAlertTime ||
+        //   now.getTime() - lastAlertTime.getTime() > 5 * 60 * 1000; // 5 phút giữa các cảnh báo
 
-        if (shouldSendAlert) {
-          await this.sendSecurityAlert(
-            deviceId,
-            failedAttempts,
-            timeWindowStart,
-            now
-          );
-          this.deviceAlertCache.set(deviceId, now);
-        } else {
-          console.log(
-            `⏭️ Bỏ qua cảnh báo (đã gửi gần đây cho device ${deviceId})`
-          );
-        }
+        // if (shouldSendAlert) {
+        await this.sendSecurityAlert(
+          deviceId,
+          failedAttempts,
+          timeWindowStart,
+          now
+        );
+        this.deviceAlertCache.set(deviceId, now);
+        // } else {
+        //   console.log(
+        //     `⏭️ Bỏ qua cảnh báo (đã gửi gần đây cho device ${deviceId})`
+        //   );
+        // }
       }
     } catch (error) {
       console.error("❌ Lỗi kiểm tra failed attempts:", error);

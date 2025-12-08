@@ -13,6 +13,7 @@ const logSchema = new mongoose.Schema(
         "device_register",
         "device_provision_init",
         "device_login",
+        "device_deletion",
       ],
       trim: true,
     },

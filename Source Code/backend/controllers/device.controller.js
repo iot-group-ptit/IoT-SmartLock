@@ -2,7 +2,7 @@ const Device = require("../models/device.model");
 const AccessLog = require("../models/log.model");
 const Organization = require("../models/organization.model");
 const crypto = require("crypto");
-const mqttClient = require("../config/mqtt"); // ✅ THÊM DÒNG NÀY
+const mqttClient = require("../config/mqtt");
 
 // [POST] http://localhost:3000/device/register - User_manager đăng ký thiết bị mới
 module.exports.registerDevice = async (req, res) => {
@@ -169,6 +169,58 @@ module.exports.getMyDevices = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Lỗi server khi lấy danh sách thiết bị",
+    });
+  }
+};
+
+// [DELETE] http://localhost:3000/device/:device_id - Xóa thiết bị theo device_id
+module.exports.deleteDevice = async (req, res) => {
+  try {
+    const { device_id } = req.params;
+    const user = req.user;
+
+    // Tìm device
+    const device = await Device.findOne({ device_id });
+
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: "Device không tồn tại",
+      });
+    }
+
+    // Kiểm tra quyền: chỉ user_manager sở hữu device hoặc admin mới được xóa
+    if (user.role !== "admin" && device.user_id.toString() !== user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền xóa device này",
+      });
+    }
+
+    // Xóa device
+    await Device.deleteOne({ device_id });
+
+    // Log action
+    await AccessLog.create({
+      access_method: "device_deletion",
+      result: "success",
+      device_id: device_id,
+      user_id: user.id,
+      additional_info: `Device ${device_id} đã bị xóa bởi ${user.role}`,
+    });
+
+    console.log(`✓ Device ${device_id} đã bị xóa bởi user ${user.id}`);
+
+    res.json({
+      success: true,
+      message: "Xóa device thành công",
+    });
+  } catch (error) {
+    console.error("❌ Lỗi xóa device:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server khi xóa device",
+      error: error.message,
     });
   }
 };

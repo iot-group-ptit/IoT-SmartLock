@@ -70,6 +70,7 @@ module.exports.enrollRFID = async (req, res) => {
 //[DELETE] http://localhost:3000/rfid/delete - User_manager xóa thẻ RFID của user
 module.exports.deleteRFID = async (req, res) => {
   try {
+    console.log(req.body);
     const { cardId, userId } = req.body;
 
     // Validate input
@@ -86,13 +87,13 @@ module.exports.deleteRFID = async (req, res) => {
     if (cardId && userId) {
       // Xóa thẻ cụ thể của user cụ thể
       filter = {
-        $or: [{ card_id: cardId }, { uid: cardId }],
+        $or: [{ _id: cardId }],
         user_id: userId,
       };
     } else if (cardId) {
       // Xóa thẻ theo cardId hoặc uid
       filter = {
-        $or: [{ card_id: cardId }, { uid: cardId }],
+        $or: [{ _id: cardId }],
       };
     } else if (userId) {
       // Xóa tất cả thẻ của user (nếu cần)
