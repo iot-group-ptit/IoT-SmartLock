@@ -50,13 +50,21 @@ app.get("/health", (req, res) =>
 
 route(app);
 
-// Socket.IO connection
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
+  console.log("✅ Client connected:", socket.id);
+
   socket.on("authenticate", (data) => {
-    if (data.userId) socket.join(`user_${data.userId}`);
+    if (data.userId) {
+      socket.join(`user_${data.userId}`);
+      console.log(`🔐 User ${data.userId} joined room: user_${data.userId}`);
+    } else {
+      console.log("⚠️ Authenticate event without userId");
+    }
   });
-  socket.on("disconnect", () => console.log("Client disconnected:", socket.id));
+
+  socket.on("disconnect", () => {
+    console.log("❌ Client disconnected:", socket.id);
+  });
 });
 
 // MQTT subscription logic

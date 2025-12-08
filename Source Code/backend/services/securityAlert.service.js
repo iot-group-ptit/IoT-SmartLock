@@ -74,6 +74,7 @@ class SecurityAlertService {
    * @param {Date} startTime - Thời điểm bắt đầu
    * @param {Date} endTime - Thời điểm kết thúc
    */
+
   async sendSecurityAlert(deviceId, failedCount, startTime, endTime) {
     try {
       console.log(
@@ -162,15 +163,31 @@ class SecurityAlertService {
 
       // 7. Gửi cảnh báo realtime qua Socket.IO
       if (global.io) {
-        global.io.to(`user_${manager._id}`).emit("security_alert", {
-          ...alertPayload,
-          notificationId: savedNotifications.find(
-            (n) => n.user_id === manager._id.toString()
-          )?.id,
-        });
+        // Format phù hợp với Android SecurityAlertEvent
+        const alertData = {
+          notificationId:
+            savedNotifications.find((n) => n.user_id === manager._id.toString())
+              ?.id || notification.id,
+          deviceId: deviceId,
+          method: failedLogs[0]?.access_method || "unknown",
+          attemptCount: failedCount,
+          message: alertMessage,
+          timestamp: new Date().toISOString(),
+          // Thêm thông tin bổ sung
+          deviceName: device.type || "Smart Lock",
+          severity: "high",
+          details: failedLogs.slice(0, 3).map((log) => ({
+            method: log.access_method,
+            time: log.createdAt,
+            reason: log.additional_info,
+          })),
+        };
+
+        global.io.to(`user_${manager._id}`).emit("security_alert", alertData);
         console.log(
           `📤 Đã gửi realtime alert đến user_manager: ${manager.fullName}`
         );
+        console.log(`📦 Alert data:`, JSON.stringify(alertData, null, 2));
       } else {
         console.log("⚠️ Socket.IO chưa được khởi tạo");
       }
