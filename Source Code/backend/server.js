@@ -116,4 +116,8 @@ process.on("unhandledRejection", (reason, promise) => {
 
 startServer();
 
+// Thêm vào cuối file server.js
+const otaRoutes = require("./routes/ota");
+app.use("/api/ota", otaRoutes);
+
 module.exports = { app, server, io };

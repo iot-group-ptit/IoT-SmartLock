@@ -42,6 +42,8 @@ class MQTTService {
       DEVICE_PROVISION_RESPONSE: "smartlock/device/provision/response",
       DEVICE_FINALIZE_REQUEST: "smartlock/device/finalize/request",
       DEVICE_FINALIZE_RESPONSE: "smartlock/device/finalize/response",
+      // THÊM TOPIC OTA
+      OTA_PROGRESS: "smartlock/ota/progress",
     };
   }
 
@@ -114,6 +116,7 @@ class MQTTService {
       //   this.topics.AUTH_REQUEST,
       this.topics.DEVICE_PROVISION_REQUEST,
       this.topics.DEVICE_FINALIZE_REQUEST,
+      this.topics.OTA_PROGRESS, // THÊM TOPIC OTA PROGRESS
     ];
 
     topicsToSubscribe.forEach((topic) => {
@@ -942,7 +945,18 @@ ${Buffer.from(certString).toString("base64")}
       const messageStr = message.toString();
       console.log(`\n📨 Nhận message từ topic: ${topic}`);
       console.log("Raw message:", messageStr);
-
+      // XỬ LÝ OTA PROGRESS – QUAN TRỌNG NHẤT!
+      if (topic === this.topics.OTA_PROGRESS) {
+        try {
+          const OTAController = require("../controllers/otaController");
+          const data = JSON.parse(messageStr);
+          console.log("OTA PROGRESS:", data.percent + "% - " + data.message);
+          OTAController.reportProgress(data); // GỌI CONTROLLER ĐỂ CẬP NHẬT DB + GỬI SOCKET.IO
+        } catch (err) {
+          console.error("Lỗi parse OTA progress:", err);
+        }
+        return;
+      }
       // Xử lý theo topic cụ thể
       switch (topic) {
         case this.topics.ENROLL_RFID:
