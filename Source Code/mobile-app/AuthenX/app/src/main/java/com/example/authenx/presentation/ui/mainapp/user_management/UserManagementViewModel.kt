@@ -6,6 +6,7 @@ import com.example.authenx.data.local.AuthManager
 import com.example.authenx.domain.model.User
 import com.example.authenx.domain.usecase.DeleteUserUseCase
 import com.example.authenx.domain.usecase.GetAllUsersUseCase
+import com.example.authenx.domain.repository.BiometricRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -29,6 +30,7 @@ enum class FilterType {
 class UserManagementViewModel @Inject constructor(
     private val getAllUsersUseCase: GetAllUsersUseCase,
     private val deleteUserUseCase: DeleteUserUseCase,
+    private val biometricRepository: BiometricRepository,
     private val authManager: AuthManager
 ) : ViewModel() {
 
@@ -120,11 +122,52 @@ class UserManagementViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val success = deleteUserUseCase(userId)
-                if (!success) {
+                if (success) {
+                    _uiState.update { it.copy(error = "User deleted successfully") }
+                } else {
                     _uiState.update { it.copy(error = "Failed to delete user") }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message ?: "Delete failed") }
+            }
+        }
+    }
+    
+    fun deleteFingerprint(fingerprintId: String, userId: String, deviceId: String?) {
+        viewModelScope.launch {
+            try {
+                val request = com.example.authenx.domain.model.DeleteFingerprintRequest(
+                    fingerprintId = fingerprintId,
+                    userId = userId,
+                    deviceId = deviceId ?: ""
+                )
+                val response = biometricRepository.deleteFingerprint(request)
+                if (response.success) {
+                    _uiState.update { it.copy(error = "Fingerprint deleted successfully") }
+                } else {
+                    _uiState.update { it.copy(error = response.message ?: "Failed to delete fingerprint") }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "Delete fingerprint failed") }
+            }
+        }
+    }
+    
+    fun deleteRfid(cardId: String, userId: String) {
+        viewModelScope.launch {
+            try {
+                val request = com.example.authenx.domain.model.DeleteRfidRequest(
+                    cardId = cardId,
+                    userId = userId
+                )
+                val response = biometricRepository.deleteRfid(request)
+                if (response.success) {
+                    _uiState.update { it.copy(error = "RFID card deleted successfully") }
+                } else {
+                    _uiState.update { it.copy(error = response.message ?: "Failed to delete RFID card") }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "Delete RFID failed") }
             }
         }
     }

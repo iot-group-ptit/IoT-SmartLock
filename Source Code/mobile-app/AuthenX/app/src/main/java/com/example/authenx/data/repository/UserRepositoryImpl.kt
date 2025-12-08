@@ -27,10 +27,15 @@ class UserRepositoryImpl @Inject constructor(
     
         try {
             val response = userDataSource.getAllUsers(token)
+            android.util.Log.d("UserRepository", "📥 Response code: ${response.code}, users count: ${response.users.size}")
             if (response.code == 200) {
+                response.users.forEach { user ->
+                    android.util.Log.d("UserRepository", "👤 User: ${user.fullName}, fingerprints: ${user.fingerprints.size}, rfidCards: ${user.rfidCards.size}")
+                }
                 emit(response.users)
             }
         } catch (e: Exception) {
+            android.util.Log.e("UserRepository", "❌ Error loading users: ${e.message}", e)
             // Ignore initial error
         }
         
@@ -53,11 +58,11 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun getUserById(userId: String): User? {
+    override suspend fun getUserInfo(): User? {
         return try {
             val token = authManager.getToken() ?: return null
-            val response = userDataSource.getUserById(token, userId)
-            if (response.success) response.data else null
+            val response = userDataSource.getUserInfo(token)
+            if (response.code == 200) response.user else null
         } catch (e: Exception) {
             null
         }
@@ -78,6 +83,17 @@ class UserRepositoryImpl @Inject constructor(
             val token = authManager.getToken() ?: return false
             true
         } catch (e: Exception) {
+            false
+        }
+    }
+    
+    override suspend fun updateProfile(updates: Map<String, Any>): Boolean {
+        return try {
+            val token = authManager.getToken() ?: return false
+            val response = userDataSource.updateProfile(token, updates)
+            response.code == 200
+        } catch (e: Exception) {
+            android.util.Log.e("UserRepository", "❌ Error updating profile: ${e.message}", e)
             false
         }
     }

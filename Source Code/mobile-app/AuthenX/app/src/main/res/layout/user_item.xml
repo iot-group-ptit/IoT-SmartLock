@@ -78,47 +78,6 @@
             app:layout_constraintEnd_toStartOf="@id/btnMore"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <LinearLayout
-            android:id="@+id/layoutAuthMethods"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="start"
-            app:layout_constraintStart_toStartOf="@id/tvUserName"
-            app:layout_constraintEnd_toEndOf="@id/tvUserName"
-            app:layout_constraintTop_toBottomOf="@id/tvUserId">
-
-            <ImageView
-                android:id="@+id/ivFingerprint"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginTop="8dp"
-                android:src="@drawable/fingerprint_24px"
-                android:visibility="gone"
-                app:tint="@color/white" />
-
-            <ImageView
-                android:id="@+id/ivFace"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="8dp"
-                android:src="@drawable/face_24px"
-                android:visibility="visible"
-                app:tint="@color/white" />
-
-            <ImageView
-                android:id="@+id/ivRfid"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="8dp"
-                android:src="@drawable/id_card_24px"
-                android:visibility="visible"
-                app:tint="@color/white" />
-
-        </LinearLayout>
-
         <ImageButton
             android:id="@+id/btnMore"
             android:layout_width="40dp"
@@ -128,21 +87,100 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <LinearLayout
+            android:id="@+id/layoutAuthMethods"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="start"
+            android:layout_marginTop="8dp"
+            app:layout_constraintStart_toStartOf="@id/tvUserName"
+            app:layout_constraintEnd_toEndOf="@id/tvUserName"
+            app:layout_constraintTop_toBottomOf="@id/tvUserId">
+
+            <LinearLayout
+                android:id="@+id/layoutFingerprint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/rounded_background"
+                android:backgroundTint="@color/white"
+                android:padding="4dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/ivFingerprint"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/fingerprint_24px"
+                    app:tint="@color/secondary_color" />
+
+                <TextView
+                    android:id="@+id/tvFingerprintCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1"
+                    android:textSize="12sp"
+                    android:textColor="@color/secondary_color"
+                    android:fontFamily="@font/montserrat_semibold"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layoutRfid"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/rounded_background"
+                android:backgroundTint="@color/white"
+                android:padding="4dp"
+                android:layout_marginStart="8dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/ivRfid"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/id_card_24px"
+                    app:tint="@color/secondary_color" />
+
+                <TextView
+                    android:id="@+id/tvRfidCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1"
+                    android:textSize="12sp"
+                    android:textColor="@color/secondary_color"
+                    android:fontFamily="@font/montserrat_semibold"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/ivFace"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/face_24px"
+                android:visibility="visible"
+                app:tint="@color/white" />
+
+        </LinearLayout>
+
         <TextView
             android:id="@+id/tvLastAccess"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
             android:textSize="12sp"
             android:textColor="@android:color/darker_gray"
             android:fontFamily="@font/montserrat_semibold"
             tools:text="Access: 1 hour ago"
             android:layout_marginTop="8dp"
             app:layout_constraintStart_toStartOf="@id/tvUserName"
-            app:layout_constraintEnd_toStartOf="@id/btnMore"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/layoutAuthMethods"
             app:layout_constraintBottom_toBottomOf="parent" />
-
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </com.google.android.material.card.MaterialCardView>

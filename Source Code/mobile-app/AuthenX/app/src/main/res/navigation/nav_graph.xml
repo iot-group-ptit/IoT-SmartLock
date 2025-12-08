@@ -98,6 +98,13 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_homeFragment_to_editProfileFragment"
+            app:destination="@id/editProfileFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
     <fragment
         android:id="@+id/faceAuthenFragment"
@@ -136,6 +143,13 @@
         <action
             android:id="@+id/action_userManagementFragment_to_enrollBiometricFragment"
             app:destination="@id/enrollBiometricFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_userManagementFragment_to_editProfileFragment"
+            app:destination="@id/editProfileFragment"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
@@ -271,7 +285,7 @@
         
     <fragment
         android:id="@+id/createOrganizationFragment"
-        android:name="com.example.authenx.presentation.ui.admin.create_organization.CreateOrganizationFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.create_organization.CreateOrganizationFragment"
         android:label="CreateOrganizationFragment" />
         
     <fragment
@@ -284,4 +298,16 @@
         android:name="com.example.authenx.presentation.ui.mainapp.face_registration.FaceRegistrationFragment"
         android:label="FaceRegistrationFragment"
         tools:layout="@layout/fragment_face_registration" />
+    
+    <fragment
+        android:id="@+id/editProfileFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.edit_profile.EditProfileFragment"
+        android:label="@string/edit_profile"
+        tools:layout="@layout/fragment_edit_profile" >
+        <argument
+            android:name="userId"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+    </fragment>
 </navigation>

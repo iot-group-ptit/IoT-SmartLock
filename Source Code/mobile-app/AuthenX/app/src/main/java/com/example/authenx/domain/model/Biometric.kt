@@ -25,8 +25,10 @@ data class EnrollFingerprintResponse(
 
 @Serializable
 data class DeleteFingerprintRequest(
-    val fingerprintId: Int,
-    val userId: String
+    val fingerprintId: String,
+    val userId: String,
+    @SerializedName("device_id")
+    val deviceId: String
 )
 
 @Serializable

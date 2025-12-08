@@ -63,6 +63,7 @@ class HomeFragment : Fragment() {
         binding.btnManageUsers.visibility = View.VISIBLE
         binding.btnCreateOrganization.visibility = View.VISIBLE
         binding.btnUpdate.visibility = View.VISIBLE
+        binding.btnProfile.visibility = View.VISIBLE
     }
     
     private fun setupUserManagerUI() {
@@ -73,6 +74,7 @@ class HomeFragment : Fragment() {
         binding.btnCreateOrganization.visibility = View.GONE // Admin only
         binding.btnManageDevices.visibility = View.VISIBLE
         binding.btnUpdate.visibility = View.VISIBLE
+        binding.btnProfile.visibility = View.VISIBLE
     }
     
     private fun setupDefaultUI() {
@@ -101,6 +103,9 @@ class HomeFragment : Fragment() {
             btnManageDevices.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_deviceListFragment)
             }
+            btnProfile.setOnClickListener {
+                findNavController().navigate(R.id.action_homeFragment_to_editProfileFragment)
+            }
             btnUpdate.setOnClickListener {
                 findNavController().navigate(R.id.action_homeFragment_to_firmwareUpdateFragment)
             }
@@ -112,13 +117,7 @@ class HomeFragment : Fragment() {
 
     private fun logout() {
         SocketService.stop(requireContext())
-        
-        val sharedPref = requireActivity().getSharedPreferences("auth_prefs", android.content.Context.MODE_PRIVATE)
-        sharedPref.edit().apply {
-            remove("auth_token")
-            remove("user_id")
-            apply()
-        }
+        authManager.clearAuth()
         findNavController().navigate(R.id.action_homeFragment_to_loginFragment)
     }
 

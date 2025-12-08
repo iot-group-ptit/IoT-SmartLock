@@ -46,11 +46,14 @@ class SplashFragment : Fragment() {
     private fun checkAuthStatus() {
         val token = authManager.getToken()
         
-        if (token != null) {
+        if (!token.isNullOrEmpty() && token.length > 10) {
+            // Token exists and looks valid, try to go to home
             val serverUrl = BuildConfig.SERVER_URL
-            SocketService.start(requireContext(), serverUrl, token)
+            val userId = authManager.getUserId()
+            SocketService.start(requireContext(), serverUrl, token, userId)
             findNavController().navigate(R.id.action_splashFragment_to_homeFragment)
         } else {
+            // No token or invalid token, go to login
             findNavController().navigate(R.id.action_splashFragment_to_loginFragment)
         }
     }

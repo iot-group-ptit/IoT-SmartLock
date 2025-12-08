@@ -155,4 +155,14 @@
     <string name="camera_permission_required">Camera permission is required</string>
     <string name="register_face_title">Register Face</string>
     <string name="unlock_by_face">Unlock by Face</string>
+    
+    <!-- Edit Profile -->
+    <string name="edit_profile">Edit Profile</string>
+    <string name="old_password">Old Password</string>
+    <string name="new_password">New Password</string>
+    <string name="confirm_new_password">Confirm New Password</string>
+    <string name="change_password_optional">Change Password (Optional)</string>
+    <string name="save_changes">Save Changes</string>
+    <string name="profile_updated_successfully">Profile updated successfully</string>
+    <string name="profile">Profile</string>
 </resources>

@@ -84,11 +84,14 @@ class UserManagementFragment : Fragment() {
             onUserClick = { user ->
                 Toast.makeText(requireContext(), "User: ${user.fullName}", Toast.LENGTH_SHORT).show()
             },
-            onEditClick = { user ->
-                Toast.makeText(requireContext(), "Edit: ${user.fullName}", Toast.LENGTH_SHORT).show()
-            },
             onDeleteClick = { user ->
                 showDeleteConfirmDialog(user)
+            },
+            onDeleteFingerprintClick = { user ->
+                showDeleteFingerprintDialog(user)
+            },
+            onDeleteRfidClick = { user ->
+                showDeleteRfidDialog(user)
             }
         )
         
@@ -104,7 +107,92 @@ class UserManagementFragment : Fragment() {
             .setMessage("Are you sure you want to delete ${user.fullName}?\nThis action cannot be undone.")
             .setPositiveButton("Delete") { dialog, _ ->
                 viewModel.deleteUser(user.id)
-                Toast.makeText(requireContext(), "User deleted", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+    
+    private fun showDeleteFingerprintDialog(user: User) {
+        if (user.fingerprints.isEmpty()) {
+            Toast.makeText(requireContext(), "No fingerprints to delete", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val fingerprintItems = user.fingerprints.map { 
+            "Fingerprint ID: ${it.fingerprintId}" 
+        }.toTypedArray()
+        
+        var selectedIndex = -1
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete Fingerprint for ${user.fullName}")
+            .setSingleChoiceItems(fingerprintItems, -1) { _, which ->
+                selectedIndex = which
+            }
+            .setPositiveButton("Delete") { dialog, _ ->
+                if (selectedIndex >= 0) {
+                    val selectedFingerprint = user.fingerprints[selectedIndex]
+                    showFingerprintDeleteConfirmation(user, selectedFingerprint)
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+    
+    private fun showFingerprintDeleteConfirmation(user: User, fingerprint: com.example.authenx.domain.model.FingerprintInfo) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Confirm Delete")
+            .setMessage("Delete fingerprint ID ${fingerprint.fingerprintId} for ${user.fullName}?")
+            .setPositiveButton("Delete") { dialog, _ ->
+                viewModel.deleteFingerprint(fingerprint.fingerprintId, user.id, fingerprint.deviceId)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+    
+    private fun showDeleteRfidDialog(user: User) {
+        if (user.rfidCards.isEmpty()) {
+            Toast.makeText(requireContext(), "No RFID cards to delete", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val rfidItems = user.rfidCards.map { 
+            "Card UID: ${it.cardUid}" 
+        }.toTypedArray()
+        
+        var selectedIndex = -1
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete RFID Card for ${user.fullName}")
+            .setSingleChoiceItems(rfidItems, -1) { _, which ->
+                selectedIndex = which
+            }
+            .setPositiveButton("Delete") { dialog, _ ->
+                if (selectedIndex >= 0) {
+                    val selectedCard = user.rfidCards[selectedIndex]
+                    showRfidDeleteConfirmation(user, selectedCard)
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+    
+    private fun showRfidDeleteConfirmation(user: User, card: com.example.authenx.domain.model.RfidCardInfo) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Confirm Delete")
+            .setMessage("Delete RFID card ${card.cardUid} for ${user.fullName}?")
+            .setPositiveButton("Delete") { dialog, _ ->
+                viewModel.deleteRfid(card.id, user.id)
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel") { dialog, _ ->

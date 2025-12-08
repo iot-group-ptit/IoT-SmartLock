@@ -1,4 +1,4 @@
-package com.example.authenx.presentation.ui.admin.create_organization
+package com.example.authenx.presentation.ui.mainapp.create_organization
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

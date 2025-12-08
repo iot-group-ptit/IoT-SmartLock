@@ -15,8 +15,9 @@ import java.util.Locale
 
 class UserAdapter(
     private val onUserClick: (User) -> Unit = {},
-    private val onEditClick: (User) -> Unit = {},
-    private val onDeleteClick: (User) -> Unit = {}
+    private val onDeleteClick: (User) -> Unit = {},
+    private val onDeleteFingerprintClick: (User) -> Unit = {},
+    private val onDeleteRfidClick: (User) -> Unit = {}
 ) : ListAdapter<User, UserAdapter.UserViewHolder>(DiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): UserViewHolder {
@@ -63,19 +64,25 @@ class UserAdapter(
                     root.context.getColor(R.color.white)
                 )
                 
-                // tvCreatedAt.text = "Joined: ${dateFormat.format(user.createdAt)}"
+                // Show fingerprint info
+                if (user.fingerprints.isNotEmpty()) {
+                    layoutFingerprint.visibility = View.VISIBLE
+                    tvFingerprintCount.text = user.fingerprints.size.toString()
+                } else {
+                    layoutFingerprint.visibility = View.GONE
+                }
                 
-//                ivAvatar.setImageResource(user.avatarRes)
-//
-//                ivFingerprint.visibility = if (user.hasFingerprint) View.VISIBLE else View.GONE
-//                ivFace.visibility = if (user.hasFace) View.VISIBLE else View.GONE
-//                ivRfid.visibility = if (user.hasRfid) View.VISIBLE else View.GONE
-//
-//                tvLastAccess.text = "Access: ${dateFormat.format(user.lastAccess)}"
+                // Show RFID info
+                if (user.rfidCards.isNotEmpty()) {
+                    layoutRfid.visibility = View.VISIBLE
+                    tvRfidCount.text = user.rfidCards.size.toString()
+                } else {
+                    layoutRfid.visibility = View.GONE
+                }
                 
                 root.setOnClickListener { onUserClick(user) }
                 
-                // Setup popup menu for more button
+                // Setup menu button click
                 btnMore.setOnClickListener { view ->
                     showPopupMenu(view, user)
                 }
@@ -86,10 +93,23 @@ class UserAdapter(
             val popup = PopupMenu(view.context, view)
             popup.menuInflater.inflate(R.menu.user_item_menu, popup.menu)
             
+            // Hide edit option
+            popup.menu.findItem(R.id.action_edit)?.isVisible = false
+            
+            // Show/hide fingerprint delete option based on whether user has fingerprints
+            popup.menu.findItem(R.id.action_delete_fingerprint)?.isVisible = user.fingerprints.isNotEmpty()
+            
+            // Show/hide RFID delete option based on whether user has RFID cards
+            popup.menu.findItem(R.id.action_delete_rfid)?.isVisible = user.rfidCards.isNotEmpty()
+            
             popup.setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
-                    R.id.action_edit -> {
-                        onEditClick(user)
+                    R.id.action_delete_fingerprint -> {
+                        onDeleteFingerprintClick(user)
+                        true
+                    }
+                    R.id.action_delete_rfid -> {
+                        onDeleteRfidClick(user)
                         true
                     }
                     R.id.action_delete -> {

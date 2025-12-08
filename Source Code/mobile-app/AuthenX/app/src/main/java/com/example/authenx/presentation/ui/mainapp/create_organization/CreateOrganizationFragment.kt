@@ -1,4 +1,4 @@
-package com.example.authenx.presentation.ui.admin.create_organization
+package com.example.authenx.presentation.ui.mainapp.create_organization
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
