@@ -43,3 +43,8 @@ data class RegisterDeviceResponse(
     @SerializedName("token_expires")
     val tokenExpires: String? = null
 )
+
+data class DeleteDeviceResponse(
+    val success: Boolean,
+    val message: String
+)

@@ -2,11 +2,13 @@ package com.example.authenx.data.remote.source
 
 import com.example.authenx.BuildConfig
 import com.example.authenx.data.local.AuthManager
+import com.example.authenx.domain.model.DeleteDeviceResponse
 import com.example.authenx.domain.model.DevicesResponse
 import com.example.authenx.domain.model.RegisterDeviceRequest
 import com.example.authenx.domain.model.RegisterDeviceResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -34,6 +36,13 @@ class DeviceDataSource @Inject constructor(
             header("Authorization", "Bearer $token")
             contentType(ContentType.Application.Json)
             setBody(request)
+        }.body()
+    }
+
+    suspend fun deleteDevice(deviceId: String): DeleteDeviceResponse {
+        val token = authManager.getToken()
+        return httpClient.delete("$baseUrl/device/$deviceId") {
+            header("Authorization", "Bearer $token")
         }.body()
     }
 }

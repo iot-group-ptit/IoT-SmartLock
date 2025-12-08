@@ -2,6 +2,7 @@ package com.example.authenx.presentation.ui.mainapp.device_list
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -11,7 +12,8 @@ import com.example.authenx.databinding.ItemDeviceBinding
 import com.example.authenx.domain.model.Device
 
 class DeviceAdapter(
-    private val onDeviceClick: (Device) -> Unit
+    private val onDeviceClick: (Device) -> Unit,
+    private val onDeleteClick: (Device) -> Unit
 ) : ListAdapter<Device, DeviceAdapter.DeviceViewHolder>(DeviceDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
@@ -20,7 +22,7 @@ class DeviceAdapter(
             parent,
             false
         )
-        return DeviceViewHolder(binding, onDeviceClick)
+        return DeviceViewHolder(binding, onDeviceClick, onDeleteClick)
     }
 
     override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
@@ -29,7 +31,8 @@ class DeviceAdapter(
 
     class DeviceViewHolder(
         private val binding: ItemDeviceBinding,
-        private val onDeviceClick: (Device) -> Unit
+        private val onDeviceClick: (Device) -> Unit,
+        private val onDeleteClick: (Device) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(device: Device) {
@@ -63,6 +66,26 @@ class DeviceAdapter(
                 root.setOnClickListener {
                     onDeviceClick(device)
                 }
+
+                btnDeviceMenu.setOnClickListener { view ->
+                    showPopupMenu(view, device)
+                }
+            }
+        }
+
+        private fun showPopupMenu(view: android.view.View, device: Device) {
+            PopupMenu(view.context, view).apply {
+                inflate(R.menu.menu_device_item)
+                setOnMenuItemClickListener { menuItem ->
+                    when (menuItem.itemId) {
+                        R.id.action_delete_device -> {
+                            onDeleteClick(device)
+                            true
+                        }
+                        else -> false
+                    }
+                }
+                show()
             }
         }
     }

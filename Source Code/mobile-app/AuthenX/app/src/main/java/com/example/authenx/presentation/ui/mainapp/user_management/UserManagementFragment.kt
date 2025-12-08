@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.authenx.R
 import com.example.authenx.data.local.AuthManager
 import com.example.authenx.databinding.FragmentUserManagementBinding
+import com.example.authenx.domain.model.RfidCardInfo
 import com.example.authenx.domain.model.User
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -187,7 +188,7 @@ class UserManagementFragment : Fragment() {
             .show()
     }
     
-    private fun showRfidDeleteConfirmation(user: User, card: com.example.authenx.domain.model.RfidCardInfo) {
+    private fun showRfidDeleteConfirmation(user: User, card: RfidCardInfo) {
         AlertDialog.Builder(requireContext())
             .setTitle("Confirm Delete")
             .setMessage("Delete RFID card ${card.cardUid} for ${user.fullName}?")

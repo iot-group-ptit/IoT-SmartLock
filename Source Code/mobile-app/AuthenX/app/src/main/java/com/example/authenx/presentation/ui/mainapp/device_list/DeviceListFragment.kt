@@ -44,21 +44,26 @@ class DeviceListFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        deviceAdapter = DeviceAdapter { device ->
-            val bundle = bundleOf(
-                "deviceId" to device.deviceId,
-                "deviceType" to device.type,
-                "deviceModel" to device.model,
-                "deviceStatus" to device.status,
-                "deviceOrgId" to device.orgId,
-                "deviceLastSeen" to device.lastSeen,
-                "deviceCreatedAt" to device.createdAt
-            )
-            findNavController().navigate(
-                R.id.action_deviceListFragment_to_deviceDetailFragment,
-                bundle
-            )
-        }
+        deviceAdapter = DeviceAdapter(
+            onDeviceClick = { device ->
+                val bundle = bundleOf(
+                    "deviceId" to device.deviceId,
+                    "deviceType" to device.type,
+                    "deviceModel" to device.model,
+                    "deviceStatus" to device.status,
+                    "deviceOrgId" to device.orgId,
+                    "deviceLastSeen" to device.lastSeen,
+                    "deviceCreatedAt" to device.createdAt
+                )
+                findNavController().navigate(
+                    R.id.action_deviceListFragment_to_deviceDetailFragment,
+                    bundle
+                )
+            },
+            onDeleteClick = { device ->
+                showDeleteConfirmDialog(device)
+            }
+        )
 
         binding.rvDevices.apply {
             layoutManager = LinearLayoutManager(requireContext())
@@ -104,7 +109,19 @@ class DeviceListFragment : Fragment() {
 
         state.error?.let { error ->
             Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
         }
+    }
+
+    private fun showDeleteConfirmDialog(device: com.example.authenx.domain.model.Device) {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Delete Device")
+            .setMessage("Are you sure you want to delete device ${device.deviceId}?")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.deleteDevice(device.deviceId)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onDestroyView() {

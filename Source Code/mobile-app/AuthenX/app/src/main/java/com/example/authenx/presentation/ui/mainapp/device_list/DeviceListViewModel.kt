@@ -3,17 +3,20 @@ package com.example.authenx.presentation.ui.mainapp.device_list
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.authenx.domain.model.Device
+import com.example.authenx.domain.usecase.DeleteDeviceUseCase
 import com.example.authenx.domain.usecase.GetMyDevicesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class DeviceListViewModel @Inject constructor(
-    private val getMyDevicesUseCase: GetMyDevicesUseCase
+    private val getMyDevicesUseCase: GetMyDevicesUseCase,
+    private val deleteDeviceUseCase: DeleteDeviceUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DeviceListUiState())
@@ -42,6 +45,22 @@ class DeviceListViewModel @Inject constructor(
                     )
                 }
         }
+    }
+
+    fun deleteDevice(deviceId: String) {
+        viewModelScope.launch {
+            val success = deleteDeviceUseCase(deviceId)
+            if (success) {
+                _uiState.update { it.copy(error = "Device deleted successfully") }
+                loadDevices()
+            } else {
+                _uiState.update { it.copy(error = "Failed to delete device") }
+            }
+        }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 }
 
