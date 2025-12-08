@@ -38,11 +38,12 @@ class SocketService : Service() {
         private const val ACTION_START = "com.example.authenx.action.START"
         private const val ACTION_STOP = "com.example.authenx.action.STOP"
 
-        fun start(context: Context, serverUrl: String, token: String) {
+        fun start(context: Context, serverUrl: String, token: String, userId: String? = null) {
             val intent = Intent(context, SocketService::class.java).apply {
                 action = ACTION_START
                 putExtra("server_url", serverUrl)
                 putExtra("token", token)
+                putExtra("user_id", userId)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -70,14 +71,15 @@ class SocketService : Service() {
             ACTION_START -> {
                 val serverUrl = intent.getStringExtra("server_url") ?: return START_NOT_STICKY
                 val token = intent.getStringExtra("token") ?: return START_NOT_STICKY
+                val userId = intent.getStringExtra("user_id")
                 
                 startForeground(FOREGROUND_NOTIFICATION_ID, createForegroundNotification())
                 
-                // Connect socket
-                socketManager.connect(serverUrl, token)
+                // Connect socket with userId for authentication
+                socketManager.connect(serverUrl, token, userId)
                 listenToSocketEvents()
                 
-                Log.d(TAG, "Service started and listening")
+                Log.d(TAG, "Service started and listening (userId: $userId)")
             }
             ACTION_STOP -> {
                 stopForeground(true)
@@ -148,6 +150,25 @@ class SocketService : Service() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Error processing unlock event", e)
                     }
+                }
+            }
+        }
+        
+        // Listen to security alert events
+        serviceScope.launch {
+            socketManager.onSecurityAlert().collect { alert ->
+                try {
+                    Log.d(TAG, "🚨 Security alert received in service: ${alert.message}")
+                    
+                    // Show notification
+                    NotificationHelper.showSecurityAlertNotification(
+                        context = this@SocketService,
+                        message = alert.message,
+                        deviceId = alert.deviceId,
+                        method = alert.method
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing security alert", e)
                 }
             }
         }
