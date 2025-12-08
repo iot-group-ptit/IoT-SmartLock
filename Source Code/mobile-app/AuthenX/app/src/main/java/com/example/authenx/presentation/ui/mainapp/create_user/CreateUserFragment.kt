@@ -1,6 +1,7 @@
 package com.example.authenx.presentation.ui.mainapp.create_user
 
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -24,6 +25,12 @@ class CreateUserFragment : Fragment() {
     private val binding get() = _binding!!
     
     private val viewModel: CreateUserViewModel by viewModels()
+    
+    private var hasNavigated = false
+
+    companion object {
+        private const val TAG = "CreateUserFragment"
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -63,34 +70,36 @@ class CreateUserFragment : Fragment() {
     }
     
     private fun updateUi(state: CreateUserUiState) {
+        Log.d(TAG, "updateUi - isLoading: ${state.isLoading}, success: ${state.success}, createdUserId: ${state.createdUserId}, hasNavigated: $hasNavigated")
+        
         // Loading state
         binding.btnCreateUser.isEnabled = !state.isLoading
         binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.GONE
         
-        // Success state
-        if (state.success && state.createdUserId != null) {
+        // Success state - only navigate once
+        if (state.success && state.createdUserId != null && !hasNavigated) {
+            hasNavigated = true
+            
+            Log.d(TAG, "✅ User created successfully: ${state.createdUserName}")
+            
             Toast.makeText(
                 requireContext(),
-                getString(R.string.create_user_success, state.createdUserName),
-                Toast.LENGTH_SHORT
+                "✅ Tạo user ${state.createdUserName} thành công!",
+                Toast.LENGTH_LONG
             ).show()
             
-            // Navigate to enroll biometric screen with user info
-            val bundle = bundleOf(
-                "userId" to state.createdUserId,
-                "userName" to state.createdUserName
-            )
-            findNavController().navigate(
-                R.id.action_createUserFragment_to_enrollBiometricFragment,
-                bundle
-            )
-            
+            // Reset state first
             viewModel.resetState()
+            
+            // Go back to user management, realtime will update the list
+            Log.d(TAG, "Navigating back to UserManagement")
+            findNavController().popBackStack()
         }
         
         // Error state
         state.error?.let { error ->
-            Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+            Log.e(TAG, "Error creating user: $error")
+            Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show()
         }
     }
 

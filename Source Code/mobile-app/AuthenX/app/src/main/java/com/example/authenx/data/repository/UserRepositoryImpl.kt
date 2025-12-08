@@ -50,12 +50,8 @@ class UserRepositoryImpl @Inject constructor(
             }
         }
     }.onStart {
-        val token = authManager.getToken()
-        val userId = authManager.getUserId()
-        if (!token.isNullOrEmpty() && !socketManager.isConnected()) {
-            val baseUrl = com.example.authenx.BuildConfig.API_BASE_URL.replace("/api", "")
-            socketManager.connect(baseUrl, token, userId)
-        }
+        android.util.Log.d("UserRepository", "🚀 Flow started - Socket should already be connected by SocketService")
+        android.util.Log.d("UserRepository", "   Socket connected: ${socketManager.isConnected()}")
     }
     
     override suspend fun getUserInfo(): User? {

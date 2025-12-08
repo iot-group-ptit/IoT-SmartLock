@@ -55,7 +55,8 @@ class StatisticsRepositoryImpl @Inject constructor(
         val token = authManager.getToken()
         if (!token.isNullOrEmpty()) {
             val baseUrl = com.example.authenx.BuildConfig.API_BASE_URL.replace("/api", "")
-            socketManager.connect(baseUrl, token)
+            val userId = authManager.getUserId()
+            socketManager.connect(baseUrl, token, userId)
         }
     }
 

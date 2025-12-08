@@ -38,7 +38,7 @@ class AuthManager @Inject constructor(
         return prefs.getString(KEY_REFRESH_TOKEN, null)
     }
 
-    fun saveUserInfo(userId: String, email: String, name: String, role: String) {
+    fun saveUserInfo(userId: String, email: String, name: String, role: String, orgId: String? = null) {
         prefs.edit().apply {
             putString(KEY_USER_ID, userId)
             putString(KEY_USER_EMAIL, email)

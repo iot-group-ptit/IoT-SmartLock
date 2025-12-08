@@ -56,6 +56,38 @@ module.exports.register = async (req, res) => {
 
       await user.save();
 
+      // ✅ Gửi thông báo realtime qua Socket.IO cho admin
+      console.log("🔍 Checking global.io:", !!global.io);
+      if (global.io) {
+        const userResponse = {
+          _id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          phone: user.phone,
+          org_id: user.org_id,
+          role: user.role,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        };
+
+        // Gửi tới tất cả admin (vì admin không có org_id cụ thể)
+        const adminRoomName = "role_admin";
+        console.log(`🔍 Emitting to room: ${adminRoomName}`);
+        console.log(`🔍 Event data:`, userResponse);
+        
+        global.io.to(adminRoomName).emit("user_manager_created", {
+          message: "Tạo user_manager thành công!",
+          user: userResponse,
+        });
+
+        // Check how many clients in room
+        const socketsInRoom = await global.io.in(adminRoomName).allSockets();
+        console.log(`✅ Socket emitted: user_manager_created to ${adminRoomName}`);
+        console.log(`📊 Clients in room ${adminRoomName}: ${socketsInRoom.size}`);
+      } else {
+        console.log("❌ global.io is not available!");
+      }
+
       res.json({
         code: 200,
         message: "Tạo tài khoản thành công!",
@@ -307,6 +339,38 @@ module.exports.createUser = async (req, res) => {
     });
 
     await newUser.save();
+
+    // ✅ Gửi thông báo realtime qua Socket.IO cho user_manager
+    console.log("🔍 Checking global.io for user_created:", !!global.io);
+    if (global.io) {
+      const userResponse = {
+        _id: newUser._id,
+        fullName: newUser.fullName,
+        phone: newUser.phone,
+        role: newUser.role,
+        parent_id: newUser.parent_id,
+        createdAt: newUser.createdAt,
+        updatedAt: newUser.updatedAt,
+      };
+      console.log("new user id", newUser._id);
+
+      // Gửi tới user_manager (creator)
+      const roomName = `user_${creator.id}`;
+      console.log(`🔍 Emitting user_created to room: ${roomName}`);
+      console.log(`🔍 Event data:`, userResponse);
+      
+      global.io.to(roomName).emit("user_created", {
+        message: "Tạo user thành công!",
+        user: userResponse,
+      });
+
+      // Check how many clients in room
+      const socketsInRoom = await global.io.in(roomName).allSockets();
+      console.log(`✅ Socket emitted: user_created for user_manager ${creator.id}`);
+      console.log(`📊 Clients in room ${roomName}: ${socketsInRoom.size}`);
+    } else {
+      console.log("❌ global.io is not available!");
+    }
 
     return res.json({
       code: 200,

@@ -50,7 +50,8 @@ class SplashFragment : Fragment() {
             // Token exists and looks valid, try to go to home
             val serverUrl = BuildConfig.SERVER_URL
             val userId = authManager.getUserId()
-            SocketService.start(requireContext(), serverUrl, token, userId)
+            val role = authManager.getUserRole()
+            SocketService.start(requireContext(), serverUrl, token, userId, role)
             findNavController().navigate(R.id.action_splashFragment_to_homeFragment)
         } else {
             // No token or invalid token, go to login

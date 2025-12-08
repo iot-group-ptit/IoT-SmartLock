@@ -105,10 +105,11 @@ class LoginFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
 
-                    // Start socket service for real-time notifications with userId
+                    // Start socket service for real-time notifications with userId and role
                     val serverUrl = BuildConfig.SERVER_URL
                     val userId = response.user?.id
-                    SocketService.start(requireContext(), serverUrl, response.token, userId)
+                    val role = response.user?.role
+                    SocketService.start(requireContext(), serverUrl, response.token, userId, role)
 
                     findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
                 } else {

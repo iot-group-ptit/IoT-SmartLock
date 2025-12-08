@@ -10,6 +10,8 @@ data class User(
     val fullName: String = "",
     val phone: String = "",
     val role: String = "",
+    @SerializedName("org_id")
+    val orgId: String? = null,
     @SerializedName("created_at")
     val createdAt: Date = Date(),
     val fingerprints: List<FingerprintInfo> = emptyList(),

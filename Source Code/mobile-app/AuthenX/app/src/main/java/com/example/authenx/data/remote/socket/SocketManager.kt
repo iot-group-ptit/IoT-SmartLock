@@ -17,7 +17,7 @@ class SocketManager @Inject constructor() {
     private var socket: Socket? = null
     private val TAG = "SocketManager"
     
-    fun connect(serverUrl: String, token: String, userId: String? = null) {
+    fun connect(serverUrl: String, token: String, userId: String? = null, role: String? = null) {
         try {
             if (socket?.connected() == true) {
                 Log.d(TAG, "Socket already connected")
@@ -36,14 +36,15 @@ class SocketManager @Inject constructor() {
             socket?.on(Socket.EVENT_CONNECT) {
                 Log.d(TAG, "Socket connected")
                 
-                // Authenticate and join user room
-                userId?.let {
-                    val authData = JSONObject().apply {
-                        put("userId", it)
-                    }
-                    socket?.emit("authenticate", authData)
-                    Log.d(TAG, "Sent authentication for user: $it")
+                // Authenticate and join user room + org room + role room
+                val authData = JSONObject().apply {
+                    userId?.let { put("userId", it) }
+                    role?.let { put("role", it) }
                 }
+                
+                Log.d(TAG, "🔐 Sending authentication data: $authData")
+                socket?.emit("authenticate", authData)
+                Log.d(TAG, "✅ Sent authentication - userId: $userId, role: $role")
             }
             
             socket?.on(Socket.EVENT_DISCONNECT) {
@@ -89,17 +90,22 @@ class SocketManager @Inject constructor() {
     }
     
     fun onUserChanged(): Flow<Unit> = callbackFlow {
-        val listener: (Array<Any>) -> Unit = { _ ->
+        val listener: (Array<Any>) -> Unit = { args ->
+            if (args.isNotEmpty()) {
+                Log.d(TAG, "User event received: ${args[0]}")
+            }
             trySend(Unit)
         }
         
         // Listen to all user-related events
         socket?.on("user_created", listener)
+        socket?.on("user_manager_created", listener)
         socket?.on("user_updated", listener)
         socket?.on("user_deleted", listener)
         
         awaitClose {
             socket?.off("user_created", listener)
+            socket?.off("user_manager_created", listener)
             socket?.off("user_updated", listener)
             socket?.off("user_deleted", listener)
         }

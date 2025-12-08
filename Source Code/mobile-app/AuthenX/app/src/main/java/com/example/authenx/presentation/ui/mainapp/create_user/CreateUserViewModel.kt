@@ -1,5 +1,6 @@
 package com.example.authenx.presentation.ui.mainapp.create_user
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.authenx.domain.usecase.CreateUserUseCase
@@ -17,6 +18,10 @@ class CreateUserViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CreateUserUiState())
     val uiState: StateFlow<CreateUserUiState> = _uiState.asStateFlow()
+    
+    companion object {
+        private const val TAG = "CreateUserViewModel"
+    }
 
     fun createUser(fullName: String, phone: String) {
         viewModelScope.launch {
@@ -24,6 +29,9 @@ class CreateUserViewModel @Inject constructor(
 
             createUserUseCase(fullName, phone)
                 .onSuccess { response ->
+                    Log.d(TAG, "✅ Create user success - code: ${response.code}, user: ${response.user}")
+                    Log.d(TAG, "   User ID: ${response.user?.id}, Name: ${response.user?.fullName}")
+                    
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         success = true,
@@ -32,6 +40,7 @@ class CreateUserViewModel @Inject constructor(
                     )
                 }
                 .onFailure { error ->
+                    Log.e(TAG, "❌ Create user failed: ${error.message}")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = error.message ?: "Create user failed"

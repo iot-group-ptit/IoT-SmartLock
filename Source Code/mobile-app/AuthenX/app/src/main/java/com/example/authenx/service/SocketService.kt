@@ -38,12 +38,13 @@ class SocketService : Service() {
         private const val ACTION_START = "com.example.authenx.action.START"
         private const val ACTION_STOP = "com.example.authenx.action.STOP"
 
-        fun start(context: Context, serverUrl: String, token: String, userId: String? = null) {
+        fun start(context: Context, serverUrl: String, token: String, userId: String? = null, role: String? = null) {
             val intent = Intent(context, SocketService::class.java).apply {
                 action = ACTION_START
                 putExtra("server_url", serverUrl)
                 putExtra("token", token)
                 putExtra("user_id", userId)
+                putExtra("role", role)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -72,14 +73,20 @@ class SocketService : Service() {
                 val serverUrl = intent.getStringExtra("server_url") ?: return START_NOT_STICKY
                 val token = intent.getStringExtra("token") ?: return START_NOT_STICKY
                 val userId = intent.getStringExtra("user_id")
+                val role = intent.getStringExtra("role")
+                
+                Log.d(TAG, "⚙️ Starting SocketService")
+                Log.d(TAG, "   serverUrl: $serverUrl")
+                Log.d(TAG, "   userId: $userId")
+                Log.d(TAG, "   role: $role")
                 
                 startForeground(FOREGROUND_NOTIFICATION_ID, createForegroundNotification())
                 
-                // Connect socket with userId for authentication
-                socketManager.connect(serverUrl, token, userId)
+                // Connect socket with userId and role for authentication
+                socketManager.connect(serverUrl, token, userId, role)
                 listenToSocketEvents()
                 
-                Log.d(TAG, "Service started and listening (userId: $userId)")
+                Log.d(TAG, "Service started and listening (userId: $userId, role: $role)")
             }
             ACTION_STOP -> {
                 stopForeground(true)
