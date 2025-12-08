@@ -2,12 +2,11 @@ const AccessLog = require("../models/log.model");
 const Device = require("../models/device.model");
 const User = require("../models/user.model");
 const Notification = require("../models/notification.model");
-// const { v4: uuidv4 } = require('uuid'); // npm install uuid
 
 class SecurityAlertService {
   constructor() {
     this.FAILED_ATTEMPTS_THRESHOLD = 3; // Số lần thất bại tối đa
-    this.TIME_WINDOW_MINUTES = 3; // Khoảng thời gian kiểm tra (phút)
+    this.TIME_WINDOW_MINUTES = 1; // Khoảng thời gian kiểm tra (phút)
     this.deviceAlertCache = new Map(); // Cache để tránh spam cảnh báo
   }
 
@@ -45,23 +44,23 @@ class SecurityAlertService {
       if (failedAttempts >= this.FAILED_ATTEMPTS_THRESHOLD) {
         // Kiểm tra xem đã gửi cảnh báo gần đây chưa (tránh spam)
         const lastAlertTime = this.deviceAlertCache.get(deviceId);
-        const shouldSendAlert =
-          !lastAlertTime ||
-          now.getTime() - lastAlertTime.getTime() > 5 * 60 * 1000; // 5 phút giữa các cảnh báo
+        // const shouldSendAlert =
+        //   !lastAlertTime ||
+        //   now.getTime() - lastAlertTime.getTime() > 5 * 60 * 1000; // 5 phút giữa các cảnh báo
 
-        if (shouldSendAlert) {
-          await this.sendSecurityAlert(
-            deviceId,
-            failedAttempts,
-            timeWindowStart,
-            now
-          );
-          this.deviceAlertCache.set(deviceId, now);
-        } else {
-          console.log(
-            `⏭️ Bỏ qua cảnh báo (đã gửi gần đây cho device ${deviceId})`
-          );
-        }
+        // if (shouldSendAlert) {
+        await this.sendSecurityAlert(
+          deviceId,
+          failedAttempts,
+          timeWindowStart,
+          now
+        );
+        this.deviceAlertCache.set(deviceId, now);
+        // } else {
+        //   console.log(
+        //     `⏭️ Bỏ qua cảnh báo (đã gửi gần đây cho device ${deviceId})`
+        //   );
+        // }
       }
     } catch (error) {
       console.error("❌ Lỗi kiểm tra failed attempts:", error);
@@ -90,12 +89,11 @@ class SecurityAlertService {
       }
 
       // 2. Tìm user_manager quản lý thiết bị này (qua org_id)
-      const managers = await User.find({
-        org_id: device.org_id,
-        role: "user_manager",
-      }).select("_id fullName email");
+      const manager = await User.findById(device.user_id).select(
+        "_id fullName email"
+      );
 
-      if (!managers || managers.length === 0) {
+      if (!manager) {
         console.log("⚠️ Không tìm thấy user_manager để gửi cảnh báo");
         return;
       }
@@ -140,54 +138,59 @@ class SecurityAlertService {
       // 6. ✅ LƯU NOTIFICATION VÀO DATABASE cho từng user_manager
       const savedNotifications = [];
 
-      for (const manager of managers) {
-        const notification = await Notification.create({
-          user_id: manager._id.toString(),
-          notification_type: "security_alert", // Loại: cảnh báo bảo mật
-          title: alertTitle,
-          message: alertMessage,
-          is_read: false,
-          created_at: new Date(),
-          // ✅ Lưu thêm metadata để sau này query dễ dàng
-          metadata: {
-            deviceId: deviceId,
-            deviceName: device.type || "Smart Lock",
-            failedAttempts: failedCount,
-            severity: "high",
-            alertPayload: JSON.stringify(alertPayload), // Lưu full payload
-          },
-        });
+      const notification = await Notification.create({
+        user_id: manager._id.toString(),
+        notification_type: "security_alert", // Loại: cảnh báo bảo mật
+        title: alertTitle,
+        message: alertMessage,
+        is_read: false,
+        created_at: new Date(),
+        // ✅ Lưu thêm metadata để sau này query dễ dàng
+        metadata: {
+          deviceId: deviceId,
+          deviceName: device.type || "Smart Lock",
+          failedAttempts: failedCount,
+          severity: "high",
+          alertPayload: JSON.stringify(alertPayload), // Lưu full payload
+        },
+      });
 
-        savedNotifications.push(notification);
-        console.log(
-          `✅ Đã lưu notification ${notification.id} cho user_manager: ${manager.fullName}`
-        );
-      }
+      savedNotifications.push(notification);
+      console.log(
+        `✅ Đã lưu notification ${notification.id} cho user_manager: ${manager.fullName}`
+      );
 
       // 7. Gửi cảnh báo realtime qua Socket.IO
       if (global.io) {
-        managers.forEach((manager) => {
-          global.io.to(`user_${manager._id}`).emit("security_alert", {
-            ...alertPayload,
-            notificationId: savedNotifications.find(
-              (n) => n.user_id === manager._id.toString()
-            )?.id,
-          });
-          console.log(
-            `📤 Đã gửi realtime alert đến user_manager: ${manager.fullName}`
-          );
-        });
+        // Format phù hợp với Android SecurityAlertEvent
+        const alertData = {
+          notificationId:
+            savedNotifications.find((n) => n.user_id === manager._id.toString())
+              ?.id || notification.id,
+          deviceId: deviceId,
+          method: failedLogs[0]?.access_method || "unknown",
+          attemptCount: failedCount,
+          message: alertMessage,
+          timestamp: new Date().toISOString(),
+          // Thêm thông tin bổ sung
+          deviceName: device.type || "Smart Lock",
+          severity: "high",
+          details: failedLogs.slice(0, 3).map((log) => ({
+            method: log.access_method,
+            time: log.createdAt,
+            reason: log.additional_info,
+          })),
+        };
+
+        global.io.to(`user_${manager._id}`).emit("security_alert", alertData);
+        console.log(
+          `📤 Đã gửi realtime alert đến user_manager: ${manager.fullName}`
+        );
+        console.log(`📦 Alert data:`, JSON.stringify(alertData, null, 2));
       } else {
         console.log("⚠️ Socket.IO chưa được khởi tạo");
       }
 
-      // 8. (Tùy chọn) Gửi email cảnh báo
-      // await this.sendEmailAlert(managers, alertPayload);
-
-      // 9. (Tùy chọn) Tạm khóa thiết bị nếu cần
-      // await this.temporaryLockDevice(deviceId);
-
-      // 10. Trả về thông tin notification đã tạo
       return {
         success: true,
         notificationsSent: savedNotifications.length,
@@ -330,4 +333,4 @@ setInterval(() => {
   securityAlertService.clearAlertCache();
 }, 60 * 60 * 1000);
 
-module.exports = securityAlertService;
+module.exports = new SecurityAlertService();
