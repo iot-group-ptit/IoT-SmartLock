@@ -33,6 +33,25 @@ const firmwareUpdateSchema = new mongoose.Schema(
       ref: "Device",
       required: true,
     },
+    progress: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
+    message: {
+      type: String,
+      trim: true,
+    },
+    uploaded_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    // Lưu thêm thông tin firmware (dễ query)
+    firmware_ref: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Firmware",
+    },
   },
   {
     timestamps: true,

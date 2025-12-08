@@ -45,9 +45,14 @@ class MQTTService {
       DEVICE_PROVISION_RESPONSE: "smartlock/device/provision/response",
       DEVICE_FINALIZE_REQUEST: "smartlock/device/finalize/request",
       DEVICE_FINALIZE_RESPONSE: "smartlock/device/finalize/response",
+<<<<<<< HEAD
       DEVICE_LOGIN: "smartlock/device/login",
       DEVICE_LOGIN_RESPONSE: "smartlock/device/login/response",
       DEVICE_HEARTBEAT: "smartlock/device/heartbeat",
+=======
+      // THÊM TOPIC OTA
+      OTA_PROGRESS: "smartlock/ota/progress",
+>>>>>>> origin/firmware-yen
     };
 
     // Session storage
@@ -128,9 +133,13 @@ class MQTTService {
       //   this.topics.AUTH_REQUEST,
       this.topics.DEVICE_PROVISION_REQUEST,
       this.topics.DEVICE_FINALIZE_REQUEST,
+<<<<<<< HEAD
       "smartlock/device/+/request_ca_cert",
       this.topics.DEVICE_LOGIN,
       this.topics.DEVICE_HEARTBEAT,
+=======
+      this.topics.OTA_PROGRESS, // THÊM TOPIC OTA PROGRESS
+>>>>>>> origin/firmware-yen
     ];
 
     topicsToSubscribe.forEach((topic) => {
@@ -1595,6 +1604,7 @@ ${Buffer.from(certString).toString("base64")}
       const messageStr = message.toString();
       console.log(`\n📨 Nhận message từ topic: ${topic}`);
       console.log("Raw message:", messageStr);
+<<<<<<< HEAD
 
       // ✅ XỬ LÝ REQUEST CA CERTIFICATE
       if (topic.includes("/request_ca_cert")) {
@@ -1607,6 +1617,20 @@ ${Buffer.from(certString).toString("base64")}
         return;
       }
 
+=======
+      // XỬ LÝ OTA PROGRESS – QUAN TRỌNG NHẤT!
+      if (topic === this.topics.OTA_PROGRESS) {
+        try {
+          const OTAController = require("../controllers/otaController");
+          const data = JSON.parse(messageStr);
+          console.log("OTA PROGRESS:", data.percent + "% - " + data.message);
+          OTAController.reportProgress(data); // GỌI CONTROLLER ĐỂ CẬP NHẬT DB + GỬI SOCKET.IO
+        } catch (err) {
+          console.error("Lỗi parse OTA progress:", err);
+        }
+        return;
+      }
+>>>>>>> origin/firmware-yen
       // Xử lý theo topic cụ thể
       switch (topic) {
         case this.topics.ENROLL_RFID:
