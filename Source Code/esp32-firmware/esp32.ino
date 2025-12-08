@@ -144,6 +144,9 @@ unsigned long lastUnlockTime = 0;
 String lastCardUID = "";
 unsigned long lastCardTime = 0;
 
+bool provisioning_completed = false; 
+unsigned long provision_complete_time = 0;
+
 // ========================================
 // SECTION 1: WIFI & MQTT CONNECTION
 // ========================================
@@ -793,6 +796,21 @@ void sendDeviceLogin() {
     return;
   }
 
+  // ✅ THÊM: Kiểm tra đã login chưa
+  if (device_authenticated && session_token.length() > 0) {
+    Serial.println("⚠️ Device đã login rồi - Bỏ qua");
+    Serial.println("   Current token: " + session_token.substring(0, 16) + "...");
+    return;
+  }
+
+  // ✅ THÊM: Kiểm tra cooldown (tránh spam login)
+  static unsigned long last_login_attempt = 0;
+  if (millis() - last_login_attempt < 3000) {
+    Serial.println("⚠️ Login cooldown - Chờ 3s");
+    return;
+  }
+  last_login_attempt = millis();
+
   // Tạo timestamp
   unsigned long timestamp = millis();
   
@@ -831,6 +849,13 @@ void parseDeviceLoginResponse(String jsonString) {
   Serial.println("📥 NHẬN LOGIN RESPONSE");
   Serial.println("Raw JSON:");
   Serial.println(jsonString);
+
+  // ✅ THÊM: Kiểm tra đã login chưa
+  if (device_authenticated && session_token.length() > 0) {
+    Serial.println("⚠️ Device đã login rồi - Bỏ qua response này");
+    Serial.println("   Current token: " + session_token.substring(0, 16) + "...");
+    return;
+  }
 
   // Parse success
   bool success = jsonString.indexOf("\"success\":true") > 0;
@@ -1044,6 +1069,12 @@ void parseFinalizeResponse(String jsonString) {
           }
           
           Serial.println("\n✅ ĐĂNG KÝ THIẾT BỊ HOÀN TẤT!");
+
+          // ✅ MỚI: Set flag provision completed
+          provisioning_completed = true;
+          provision_complete_time = millis();
+
+           Serial.println("\n⚠️ SẼ RECONNECT MQTT SAU 3 GIÂY...");
         } else {
           Serial.println("✗ Certificate verification thất bại!");
         }
@@ -1374,8 +1405,24 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   // ✅ XỬ LÝ LOGIN RESPONSE
   if (String(topic) == topic_device_login_response) {
-    Serial.println("🔔 Phát hiện login response!");
-    parseDeviceLoginResponse(message);
+    Serial.println("🔔 Nhận login response");
+    
+    // ✅ THÊM: Parse và kiểm tra device_id TRƯỚC
+    int deviceIdStart = message.indexOf("\"device_id\":\"") + 13;
+    int deviceIdEnd = message.indexOf("\"", deviceIdStart);
+    
+    if (deviceIdStart > 12 && deviceIdEnd > deviceIdStart) {
+      String receivedDeviceId = message.substring(deviceIdStart, deviceIdEnd);
+      
+      // ✅ CHỈ XỬ LÝ NẾU LÀ LOGIN RESPONSE CHO DEVICE NÀY
+      if (receivedDeviceId == device_id) {
+        Serial.println("✓ Login response cho device này!");
+        parseDeviceLoginResponse(message);
+      } else {
+        Serial.println("⏭️ Bỏ qua - Login response cho device khác: " + receivedDeviceId);
+      }
+    }
+    
     return;
   }
 
@@ -1419,6 +1466,34 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   if (String(topic) == topic_device_finalize_res) {
     Serial.println("📥 Nhận finalize response từ server");
     parseFinalizeResponse(message); 
+    return;
+  }
+
+    // Thêm topic disconnect
+  String disconnectTopic = "smartlock/device/" + device_id + "/disconnect";
+  if (String(topic) == disconnectTopic) {
+    Serial.println("⚠️ NHẬN LỆNH DISCONNECT TỪ SERVER!");
+    
+    // Parse reason
+    int reasonStart = message.indexOf("\"reason\":\"") + 10;
+    int reasonEnd = message.indexOf("\"", reasonStart);
+    if (reasonStart > 9 && reasonEnd > reasonStart) {
+      String reason = message.substring(reasonStart, reasonEnd);
+      Serial.println("Lý do: " + reason);
+    }
+    
+    // Kiểm tra có yêu cầu clear credentials không
+    if (message.indexOf("\"action\":\"clear_credentials\"") > 0) {
+      Serial.println("🗑️ Đang xóa credentials...");
+      clearDeviceCredentials();
+    }
+    
+    // Disconnect MQTT
+    device_authenticated = false;
+    session_token = "";
+    mqttClient.disconnect();
+    
+    Serial.println("✓ Đã disconnect khỏi server");
     return;
   }
 
@@ -1584,6 +1659,85 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
+void clearDeviceCredentials() {
+  Serial.println("\n=== XÓA CREDENTIALS ===");
+  
+  bool success = true;
+  
+  // Xóa device certificate
+  if (SPIFFS.exists(CERTIFICATE_FILE)) {
+    if (SPIFFS.remove(CERTIFICATE_FILE)) {
+      Serial.println("✓ Đã xóa device certificate");
+    } else {
+      Serial.println("✗ Lỗi xóa device certificate");
+      success = false;
+    }
+  }
+  
+  // Xóa CA certificate
+  if (SPIFFS.exists(CA_CERT_FILE)) {
+    if (SPIFFS.remove(CA_CERT_FILE)) {
+      Serial.println("✓ Đã xóa CA certificate");
+    } else {
+      Serial.println("✗ Lỗi xóa CA certificate");
+      success = false;
+    }
+  }
+  
+  // Reset states
+  device_certificate = "";
+  device_authenticated = false;
+  session_token = "";
+  ca_cert_loaded = false;
+  
+  if (success) {
+    Serial.println("✅ Đã xóa tất cả credentials!");
+  } else {
+    Serial.println("⚠️ Có lỗi khi xóa credentials");
+  }
+  
+  Serial.println("=========================\n");
+}
+
+void performFactoryReset() {
+  Serial.println("\n=== FACTORY RESET ===");
+  
+  // 1. Xóa credentials
+  clearDeviceCredentials();
+  
+  // 2. Xóa RSA keys (tuỳ chọn - nếu muốn giữ keys thì comment dòng này)
+  if (SPIFFS.exists(PRIVATE_KEY_FILE)) {
+    SPIFFS.remove(PRIVATE_KEY_FILE);
+    Serial.println("✓ Đã xóa private key");
+  }
+  
+  if (SPIFFS.exists(PUBLIC_KEY_FILE)) {
+    SPIFFS.remove(PUBLIC_KEY_FILE);
+    Serial.println("✓ Đã xóa public key");
+  }
+  
+  // 3. Reset all states
+  device_certificate = "";
+  device_authenticated = false;
+  session_token = "";
+  ca_cert_loaded = false;
+  rsa_keys_ready = false;
+  device_challenge = "";
+  provisioning_completed = false;
+  
+  Serial.println("✅ FACTORY RESET HOÀN TẤT!");
+  Serial.println("⚠️ Cần đăng ký lại device từ admin");
+  Serial.println("📡 Đang reconnect MQTT...");
+  Serial.println("=========================\n");
+  
+  // 4. Disconnect MQTT
+  mqttClient.disconnect();
+  delay(1000);
+  
+  // 5. Restart ESP32 (tuỳ chọn)
+  // ESP.restart();
+}
+
 // ========================================
 // SECTION 7: SETUP & LOOP
 // ========================================
@@ -1646,9 +1800,37 @@ void setup() {
       }
     }
   }
+
+  // Subscribe disconnect topic
+  String disconnectTopic = "smartlock/device/" + device_id + "/disconnect";
+  mqttClient.subscribe(disconnectTopic.c_str());
+  Serial.print("Da subscribe: ");
+  Serial.println(disconnectTopic);
 }
 
 void loop() {
+  // ✅ THÊM: Auto reconnect sau khi provision xong
+  if (provisioning_completed) {
+    unsigned long elapsed = millis() - provision_complete_time;
+    
+    if (elapsed >= 3000 && elapsed < 5000) { // Chỉ chạy 1 lần trong khoảng 3-5s
+      Serial.println("\n🔄 RECONNECTING MQTT AFTER PROVISIONING...");
+      
+      // Reset states
+      provisioning_completed = false;
+      device_authenticated = false;
+      session_token = "";
+      login_request_sent = false;
+      
+      // Disconnect và reconnect
+      mqttClient.disconnect();
+      delay(1000);
+      
+      Serial.println("✓ Reconnecting...");
+      // Hàm mqttReconnect() sẽ tự động gọi sendDeviceLogin()
+    }
+  }
+
   if (!mqttClient.connected()) {
     mqttReconnect();
   }
@@ -1803,8 +1985,9 @@ void loop() {
     // CHẾ ĐỘ CHECK BÌNH THƯỜNG
     Serial.println("   → CHẾ ĐỘ: Check RFID");
     
-    String msg = "{\"cardUid\":\"" + uidString + 
-                 "\",\"device_id\":\"" + device_id + "\"}";
+  String msg = "{\"cardUid\":\"" + uidString + 
+               "\",\"device_id\":\"" + device_id + 
+               "\",\"session_token\":\"" + session_token + "\"}";
     
     bool published = mqttClient.publish("smartlock/check/rfid", msg.c_str());
     
@@ -1825,13 +2008,3 @@ void loop() {
     delay(50);
   }
 }
-
-
-
-
-
-
-
-
-
-
