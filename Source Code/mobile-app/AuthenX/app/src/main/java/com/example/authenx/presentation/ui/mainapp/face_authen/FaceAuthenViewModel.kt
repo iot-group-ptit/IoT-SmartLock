@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.authenx.domain.model.FaceRecognitionState
 import com.example.authenx.domain.usecase.CheckActionUseCase
+import com.example.authenx.domain.usecase.UnlockByFaceUseCase
 import com.example.authenx.domain.usecase.VerifyFaceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,13 +22,15 @@ data class FaceAuthenUiState(
     val similarity: Double? = null,
     val requiredDirection: String? = null,
     val initialX: Double? = null,
-    val isUnlockSuccess: Boolean = false
+    val isUnlockSuccess: Boolean = false,
+    val unlockMessage: String? = null
 )
 
 @HiltViewModel
 class FaceAuthenViewModel @Inject constructor(
     private val verifyFaceUseCase: VerifyFaceUseCase,
-    private val checkActionUseCase: CheckActionUseCase
+    private val checkActionUseCase: CheckActionUseCase,
+    private val unlockByFaceUseCase: UnlockByFaceUseCase
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(FaceAuthenUiState())
@@ -110,7 +113,7 @@ class FaceAuthenViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             state = FaceRecognitionState.SUCCESS,
                             isLoading = false,
-                            instruction = "Authentication successful! Unlocking...",
+                            instruction = "Authentication successful!",
                             isUnlockSuccess = true
                         )
                     } else {
@@ -128,6 +131,33 @@ class FaceAuthenViewModel @Inject constructor(
                         isLoading = false,
                         error = error.message ?: "Connection error",
                         instruction = "Cannot check action"
+                    )
+                }
+            )
+        }
+    }
+    
+    fun unlockDevice(deviceId: String, token: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                instruction = "Unlocking device..."
+            )
+            
+            unlockByFaceUseCase(deviceId, token).fold(
+                onSuccess = { response ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        instruction = if (response.success) "Device unlocked successfully!" else response.message,
+                        unlockMessage = response.message
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        state = FaceRecognitionState.ERROR,
+                        isLoading = false,
+                        error = error.message ?: "Failed to unlock device",
+                        instruction = "Cannot unlock device"
                     )
                 }
             )

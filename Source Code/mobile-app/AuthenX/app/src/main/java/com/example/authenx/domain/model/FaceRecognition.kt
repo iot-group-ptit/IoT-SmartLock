@@ -38,3 +38,50 @@ enum class FaceRecognitionState {
     SUCCESS,
     ERROR
 }
+
+data class RegisterFaceRequest(
+    @SerializedName("image_base64")
+    val imageBase64: String,
+    @SerializedName("user_id")
+    val userId: String
+)
+
+data class RegisterFaceResponse(
+    val status: String,
+    val message: String,
+    @SerializedName("face_id")
+    val faceId: String?,
+    @SerializedName("db_id")
+    val dbId: String?
+)
+
+data class DeleteFaceRequest(
+    @SerializedName("user_id")
+    val userId: String
+)
+
+data class DeleteFaceResponse(
+    val status: String,
+    val message: String,
+    val deleted: Int?
+)
+
+data class UnlockByFaceRequest(
+    @SerializedName("device_id")
+    val deviceId: String
+)
+
+data class UnlockByFaceResponse(
+    val success: Boolean,
+    val message: String,
+    val data: UnlockData?
+)
+
+data class UnlockData(
+    @SerializedName("user_id")
+    val userId: String,
+    @SerializedName("device_id")
+    val deviceId: String,
+    val method: String,
+    val timestamp: String
+)

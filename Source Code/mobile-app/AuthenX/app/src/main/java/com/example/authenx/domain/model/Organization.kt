@@ -32,5 +32,7 @@ data class CreateOrganizationResponse(
 data class OrganizationsResponse(
     val code: Int,
     val message: String,
-    val organizations: List<Organization>? = null
+    @SerialName("data")
+    @SerializedName(value = "data", alternate = ["organizations"])
+    val data: List<Organization>? = null
 )

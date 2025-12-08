@@ -91,12 +91,25 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_homeFragment_to_faceRegistrationFragment"
+            app:destination="@id/faceRegistrationFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
     <fragment
         android:id="@+id/faceAuthenFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.face_authen.FaceAuthenFragment"
         android:label="fragment_face_authen"
-        tools:layout="@layout/fragment_face_authen" />
+        tools:layout="@layout/fragment_face_authen" >
+        <argument
+            android:name="deviceId"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+    </fragment>
     <fragment
         android:id="@+id/statisticFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.statistic.StatisticFragment"
@@ -148,6 +161,13 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_deviceListFragment_to_faceAuthenFragment"
+            app:destination="@id/faceAuthenFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -171,6 +191,13 @@
         <action
             android:id="@+id/action_deviceDetailFragment_to_selectUserForRfidFragment"
             app:destination="@id/selectUserForRfidFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_deviceDetailFragment_to_faceAuthenFragment"
+            app:destination="@id/faceAuthenFragment"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
@@ -251,4 +278,10 @@
         android:id="@+id/firmwareUpdateFragment"
         android:name="com.example.authenx.presentation.ui.mainapp.firmware_update.FirmwareUpdateFragment"
         android:label="FirmwareUpdateFragment" />
+    
+    <fragment
+        android:id="@+id/faceRegistrationFragment"
+        android:name="com.example.authenx.presentation.ui.mainapp.face_registration.FaceRegistrationFragment"
+        android:label="FaceRegistrationFragment"
+        tools:layout="@layout/fragment_face_registration" />
 </navigation>

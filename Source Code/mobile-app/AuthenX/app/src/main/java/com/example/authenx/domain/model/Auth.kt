@@ -10,8 +10,8 @@ data class LoginRequest(
 data class RegisterRequest(
     val email: String,
     val password: String,
-    @SerializedName("full_name")
     val fullName: String,
+    val confirmPassword: String,
     val phone: String? = null,
     @SerializedName("org_id")
     val orgId: String,

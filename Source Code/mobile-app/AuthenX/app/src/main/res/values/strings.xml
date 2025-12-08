@@ -138,4 +138,21 @@
     <string name="statistics">Statistics</string>
     <string name="total_access">Total Access</string>
     <string name="alerts">Alerts</string>
+    <string name="delete_face">Delete face</string>
+    
+    <!-- Face Registration -->
+    <string name="only_user_manager_can_register_face">Only user_manager can register face</string>
+    <string name="user_info_not_found">User information not found. Please login again.</string>
+    <string name="register_face_for">Register face for: %s</string>
+    <string name="place_face_instruction">Place your face in the center of the frame and tap capture</string>
+    <string name="capture_photo">Capture Photo</string>
+    <string name="capturing_photo">Capturing photo...</string>
+    <string name="confirm_delete">Confirm Delete</string>
+    <string name="confirm_delete_face_message">Are you sure you want to delete your registered face?</string>
+    <string name="face_deleted_successfully">Face deleted successfully</string>
+    <string name="face_registered_successfully">Face registered successfully!</string>
+    <string name="try_again">Try Again</string>
+    <string name="camera_permission_required">Camera permission is required</string>
+    <string name="register_face_title">Register Face</string>
+    <string name="unlock_by_face">Unlock by Face</string>
 </resources>

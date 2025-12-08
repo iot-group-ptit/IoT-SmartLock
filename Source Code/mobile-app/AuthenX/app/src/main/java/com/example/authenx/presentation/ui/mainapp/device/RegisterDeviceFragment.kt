@@ -50,6 +50,12 @@ class RegisterDeviceFragment : Fragment() {
         binding.etDeviceId.addTextChangedListener { text ->
             viewModel.updateDeviceId(text.toString())
         }
+        binding.etDeviceType.addTextChangedListener { text ->
+            viewModel.updateType(text.toString())
+        }
+        binding.etDeviceModel.addTextChangedListener { text ->
+            viewModel.updateModel(text.toString())
+        }
     }
 
     private fun setupSubmitButton() {

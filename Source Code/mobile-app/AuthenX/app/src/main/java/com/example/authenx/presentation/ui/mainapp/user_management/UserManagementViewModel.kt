@@ -45,6 +45,7 @@ class UserManagementViewModel @Inject constructor(
         viewModelScope.launch {
             getAllUsersUseCase()
                 .catch { exception ->
+                    android.util.Log.e("UserManagementVM", "Error loading users", exception)
                     _uiState.update { 
                         it.copy(
                             isLoading = false, 
@@ -53,8 +54,15 @@ class UserManagementViewModel @Inject constructor(
                     }
                 }
                 .collect { users ->
+                    android.util.Log.d("UserManagementVM", "Received ${users.size} users from API")
+                    users.forEach { user ->
+                        android.util.Log.d("UserManagementVM", "User: ${user.fullName}, Role: ${user.role}")
+                    }
+                    
                     _uiState.update { currentState ->
                         val filteredByRole = filterUsersByRole(users, currentState.currentUserRole)
+                        android.util.Log.d("UserManagementVM", "After role filter (${currentState.currentUserRole}): ${filteredByRole.size} users")
+                        
                         currentState.copy(
                             users = filteredByRole,
                             filteredUsers = filterUsers(

@@ -17,7 +17,7 @@ class SocketManager @Inject constructor() {
     private var socket: Socket? = null
     private val TAG = "SocketManager"
     
-    fun connect(serverUrl: String, token: String) {
+    fun connect(serverUrl: String, token: String, userId: String? = null) {
         try {
             if (socket?.connected() == true) {
                 Log.d(TAG, "Socket already connected")
@@ -35,6 +35,15 @@ class SocketManager @Inject constructor() {
             
             socket?.on(Socket.EVENT_CONNECT) {
                 Log.d(TAG, "Socket connected")
+                
+                // Authenticate and join user room
+                userId?.let {
+                    val authData = JSONObject().apply {
+                        put("userId", it)
+                    }
+                    socket?.emit("authenticate", authData)
+                    Log.d(TAG, "Sent authentication for user: $it")
+                }
             }
             
             socket?.on(Socket.EVENT_DISCONNECT) {
@@ -164,6 +173,44 @@ class SocketManager @Inject constructor() {
         }
     }
     
+    fun onSecurityAlert(): Flow<SecurityAlertEvent> = callbackFlow {
+        Log.d(TAG, "Starting to listen for security_alert events...")
+        
+        val listener: (Array<Any>) -> Unit = { args ->
+            Log.d(TAG, "Security alert event received! Args count: ${args.size}")
+            try {
+                if (args.isNotEmpty()) {
+                    Log.d(TAG, "Raw security alert data: ${args[0]}")
+                    if (args[0] is JSONObject) {
+                        val json = args[0] as JSONObject
+                        val event = SecurityAlertEvent(
+                            notificationId = json.optString("notificationId"),
+                            deviceId = json.optString("deviceId"),
+                            method = json.optString("method"),
+                            attemptCount = json.optInt("attemptCount"),
+                            message = json.optString("message"),
+                            timestamp = json.optString("timestamp")
+                        )
+                        trySend(event)
+                        Log.d(TAG, "✅ Security alert parsed: ${event.message}")
+                    } else {
+                        Log.e(TAG, "Security alert data is not JSONObject: ${args[0]::class.java}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing security alert event", e)
+            }
+        }
+        
+        socket?.on("security_alert", listener)
+        Log.d(TAG, "Security alert listener registered")
+        
+        awaitClose {
+            socket?.off("security_alert", listener)
+            Log.d(TAG, "Security alert listener removed")
+        }
+    }
+    
     fun isConnected(): Boolean = socket?.connected() ?: false
 }
 
@@ -179,4 +226,13 @@ data class RfidEnrollEvent(
     val cardUid: String?,
     val success: Boolean,
     val message: String?
+)
+
+data class SecurityAlertEvent(
+    val notificationId: String,
+    val deviceId: String,
+    val method: String,
+    val attemptCount: Int,
+    val message: String,
+    val timestamp: String
 )

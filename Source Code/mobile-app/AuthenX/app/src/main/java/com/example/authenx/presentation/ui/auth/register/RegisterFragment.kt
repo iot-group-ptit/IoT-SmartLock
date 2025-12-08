@@ -55,6 +55,23 @@ class RegisterFragment : Fragment() {
                 setupOrganizationDropdown()
             }
         }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.error.collect { error ->
+                error?.let {
+                    Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.isLoadingOrgs.collect { isLoading ->
+                if (isLoading) {
+                    binding.actvOrganization.setText("Loading organizations...")
+                    binding.actvOrganization.isEnabled = false
+                }
+            }
+        }
     }
     
     private fun setupOrganizationDropdown() {
@@ -98,6 +115,7 @@ class RegisterFragment : Fragment() {
         val confirmPassword = binding.etConfirmPassword.text.toString().trim()
         val termsChecked = binding.cbTerms.isChecked
         val orgSelected = selectedOrgId != null
+        Log.d("RegisterFragment", "fullName: $fullName, email: $email, password: $password, confirmPassword: $confirmPassword")
         
         binding.btnRegister.isEnabled = fullName.isNotEmpty() && 
                 email.isNotEmpty() && 
@@ -122,8 +140,11 @@ class RegisterFragment : Fragment() {
         val fullName = binding.etFullName.text.toString().trim()
         val email = binding.etEmail.text.toString().trim()
         val phone = binding.etPhone.text.toString().trim()
+        // Lấy text và trim để loại bỏ khoảng trắng thừa
         val password = binding.etPassword.text.toString().trim()
         val confirmPassword = binding.etConfirmPassword.text.toString().trim()
+        
+        Log.d("RegisterFragment", "Password comparison: pw='$password' (${password.length}) vs confirm='$confirmPassword' (${confirmPassword.length})")
         
         // Validation
         if (fullName.isEmpty()) {
@@ -156,8 +177,10 @@ class RegisterFragment : Fragment() {
             return
         }
         
+        // So sánh 2 string đã trim
         if (password != confirmPassword) {
             binding.etConfirmPassword.error = "Passwords do not match"
+            Log.e("RegisterFragment", "Password mismatch detected!")
             return
         }
         
@@ -187,6 +210,7 @@ class RegisterFragment : Fragment() {
                 val response = viewModel.register(
                     email = email,
                     password = password,
+                    confirmPassword = confirmPassword,
                     fullName = fullName,
                     phone = phone.ifEmpty { null },
                     orgId = selectedOrgId!!

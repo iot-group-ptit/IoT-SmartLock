@@ -225,6 +225,20 @@
                 android:textColor="@color/primary_color"
                 android:fontFamily="@font/montserrat_bold" />
 
+            <!-- Unlock by Face Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUnlockByFace"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginBottom="12dp"
+                android:text="@string/unlock_by_face"
+                android:textSize="16sp"
+                android:fontFamily="@font/montserrat_semibold"
+                app:icon="@drawable/face_24px"
+                app:iconGravity="start"
+                app:backgroundTint="@color/green_status"
+                app:cornerRadius="8dp" />
+
             <!-- Enroll Fingerprint Button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnEnrollFingerprint"

@@ -27,11 +27,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
+import com.example.authenx.data.local.AuthManager
 import com.example.authenx.databinding.FragmentFaceAuthenBinding
 import com.example.authenx.domain.model.FaceRecognitionState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class FaceAuthenFragment : Fragment() {
@@ -39,6 +42,10 @@ class FaceAuthenFragment : Fragment() {
     private var _binding: FragmentFaceAuthenBinding? = null
     private val binding get() = _binding!!
     private val viewModel: FaceAuthenViewModel by viewModels()
+    private val args: FaceAuthenFragmentArgs by navArgs()
+    
+    @Inject
+    lateinit var authManager: AuthManager
     
     private var imageCapture: ImageCapture? = null
 
@@ -113,10 +120,30 @@ class FaceAuthenFragment : Fragment() {
         binding.progressProcessing.isVisible = state.isLoading
         binding.btnCapture.isEnabled = !state.isLoading
         
-        // Handle success - call unlock API
-        if (state.isUnlockSuccess) {
-            Toast.makeText(requireContext(), "Mở khóa thành công!", Toast.LENGTH_SHORT).show()
-            // TODO: Call unlock API here
+        // Handle success - call unlock API only if deviceId is provided
+        if (state.isUnlockSuccess && state.unlockMessage == null) {
+            val deviceId = args.deviceId
+            
+            // If deviceId is provided, call unlock API (unlock flow)
+            if (!deviceId.isNullOrEmpty()) {
+                val token = authManager.getToken()
+                if (token.isNullOrEmpty()) {
+                    Toast.makeText(requireContext(), "Authentication token not found", Toast.LENGTH_SHORT).show()
+                    findNavController().popBackStack()
+                    return
+                }
+                
+                viewModel.unlockDevice(deviceId, token)
+            } else {
+                // No deviceId - just face verification (from Home)
+                Toast.makeText(requireContext(), "Face verified successfully!", Toast.LENGTH_SHORT).show()
+                findNavController().popBackStack()
+            }
+        }
+        
+        // Hiển thị kết quả unlock
+        state.unlockMessage?.let { message ->
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             findNavController().popBackStack()
         }
         
@@ -189,12 +216,10 @@ class FaceAuthenFragment : Fragment() {
     }
     
     private fun imageProxyToBase64(image: ImageProxy): String {
-        // Get image bytes directly from first plane
         val buffer = image.planes[0].buffer
         val bytes = ByteArray(buffer.remaining())
         buffer.get(bytes)
-        
-        // Encode to base64 - simple and direct
+
         val base64String = Base64.encodeToString(bytes, Base64.NO_WRAP)
         
         Log.d("FaceAuthen", "Image format: ${image.format}, Base64 length: ${base64String.length}")

@@ -14,7 +14,9 @@ data class RegisterDeviceUiState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
     val error: String? = null,
-    val deviceId: String = ""
+    val deviceId: String = "",
+    val type: String = "smart_lock",
+    val model: String = "ESP32_v1"
 )
 
 @HiltViewModel
@@ -29,6 +31,14 @@ class RegisterDeviceViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(deviceId = deviceId)
     }
 
+    fun updateType(type: String) {
+        _uiState.value = _uiState.value.copy(type = type)
+    }
+
+    fun updateModel(model: String) {
+        _uiState.value = _uiState.value.copy(model = model)
+    }
+
     fun registerDevice() {
         val state = _uiState.value
         
@@ -38,11 +48,23 @@ class RegisterDeviceViewModel @Inject constructor(
             return
         }
 
+        if (state.type.isBlank()) {
+            _uiState.value = state.copy(error = "Device Type is required")
+            return
+        }
+
+        if (state.model.isBlank()) {
+            _uiState.value = state.copy(error = "Device Model is required")
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = state.copy(isLoading = true, error = null)
             
             val result = registerDeviceUseCase(
-                deviceId = state.deviceId
+                deviceId = state.deviceId,
+                type = state.type,
+                model = state.model
             )
 
             result.fold(

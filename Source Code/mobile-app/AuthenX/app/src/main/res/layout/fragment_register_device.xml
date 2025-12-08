@@ -53,12 +53,54 @@
                     android:textSize="16sp" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Device Type Input -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilDeviceType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/device_type"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                app:boxStrokeColor="@color/secondary_color"
+                app:hintTextColor="@color/secondary_color">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etDeviceType"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/montserrat"
+                    android:inputType="text"
+                    android:text="smart_lock"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Device Model Input -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilDeviceModel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/device_model"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                app:boxStrokeColor="@color/secondary_color"
+                app:hintTextColor="@color/secondary_color">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etDeviceModel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/montserrat"
+                    android:inputType="text"
+                    android:text="ESP32_v1"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
             <!-- Info Text -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="@string/device_will_be_registered_as_smart_lock_esp32_v1_to_your_organization_automatically"
+                android:text="Device will be registered to your organization automatically"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="14sp"
                 android:fontFamily="@font/montserrat"

@@ -27,13 +27,13 @@ class UserDataSource @Inject constructor (private val httpClient: HttpClient) {
     }
 
     suspend fun getUserById(token: String, userId: String): ApiResponse<User> {
-        return httpClient.get("${ApiService.Companion.BASE_URL}/users/$userId") {
+        return httpClient.get("${ApiService.Companion.BASE_URL}/user/$userId") {
             bearerAuth(token)
         }.body()
     }
 
     suspend fun deleteUser(token: String, userId: String): ApiResponse<Unit> {
-        return httpClient.delete("${ApiService.Companion.BASE_URL}/users/$userId") {
+        return httpClient.delete("${ApiService.Companion.BASE_URL}/user/delete/$userId") {
             bearerAuth(token)
         }.body()
     }

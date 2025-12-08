@@ -46,9 +46,10 @@ class UserRepositoryImpl @Inject constructor(
         }
     }.onStart {
         val token = authManager.getToken()
+        val userId = authManager.getUserId()
         if (!token.isNullOrEmpty() && !socketManager.isConnected()) {
             val baseUrl = com.example.authenx.BuildConfig.API_BASE_URL.replace("/api", "")
-            socketManager.connect(baseUrl, token)
+            socketManager.connect(baseUrl, token, userId)
         }
     }
     

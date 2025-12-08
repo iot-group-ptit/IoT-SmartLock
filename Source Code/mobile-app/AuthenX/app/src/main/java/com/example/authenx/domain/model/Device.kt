@@ -30,9 +30,8 @@ data class DevicesResponse(
 data class RegisterDeviceRequest(
     @SerializedName("device_id")
     val deviceId: String,
-    val type: String? = "smart_lock",
-    val model: String? = "ESP32_v1"
-    // org_id is auto-populated from user_manager's organization
+    val type: String,
+    val model: String
 )
 
 data class RegisterDeviceResponse(

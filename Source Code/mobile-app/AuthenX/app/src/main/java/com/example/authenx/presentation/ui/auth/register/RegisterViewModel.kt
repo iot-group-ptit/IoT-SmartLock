@@ -25,22 +25,29 @@ class RegisterViewModel @Inject constructor(
     private val _isLoadingOrgs = MutableStateFlow(false)
     val isLoadingOrgs: StateFlow<Boolean> = _isLoadingOrgs.asStateFlow()
     
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+    
     fun loadOrganizations() {
         viewModelScope.launch {
             _isLoadingOrgs.value = true
+            _error.value = null
             try {
                 val response = organizationRepository.getAllOrganizations()
                 if (response.code == 200) {
-                    _organizations.value = response.organizations ?: emptyList()
+                    _organizations.value = response.data ?: emptyList()
+                } else {
+                    _error.value = response.message ?: "Failed to load organizations"
                 }
             } catch (e: Exception) {
                 _organizations.value = emptyList()
+                _error.value = e.message ?: "Network error"
             } finally {
                 _isLoadingOrgs.value = false
             }
         }
     }
     
-    suspend fun register(email: String, password: String, fullName: String, phone: String?, orgId: String) = 
-        registerUseCase(RegisterRequest(email, password, fullName, phone, orgId))
+    suspend fun register(email: String, password: String, confirmPassword: String, fullName: String, phone: String?, orgId: String) = 
+        registerUseCase(RegisterRequest(email, password, fullName, confirmPassword, phone, orgId))
 }

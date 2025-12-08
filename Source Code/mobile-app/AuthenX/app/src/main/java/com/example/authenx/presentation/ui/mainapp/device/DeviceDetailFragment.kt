@@ -105,6 +105,18 @@ class DeviceDetailFragment : Fragment() {
     }
 
     private fun setupActionButtons() {
+        binding.btnUnlockByFace.setOnClickListener {
+            // Navigate to face authentication for unlock
+            val deviceId = viewModel.uiState.value.deviceId
+            if (deviceId != null) {
+                val action = DeviceDetailFragmentDirections
+                    .actionDeviceDetailFragmentToFaceAuthenFragment(deviceId)
+                findNavController().navigate(action)
+            } else {
+                Snackbar.make(binding.root, "Device ID not found", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+
         binding.btnEnrollFingerprint.setOnClickListener {
             // Use deviceId from uiState - it's passed from DeviceListFragment
             val deviceId = viewModel.uiState.value.deviceId

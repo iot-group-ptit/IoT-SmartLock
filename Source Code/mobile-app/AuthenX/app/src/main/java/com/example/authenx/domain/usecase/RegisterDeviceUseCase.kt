@@ -8,16 +8,24 @@ import javax.inject.Inject
 class RegisterDeviceUseCase @Inject constructor(
     private val deviceRepository: DeviceRepository
 ) {
-    suspend operator fun invoke(deviceId: String): Result<RegisterDeviceResponse> {
+    suspend operator fun invoke(deviceId: String, type: String, model: String): Result<RegisterDeviceResponse> {
         return try {
             if (deviceId.isBlank()) {
                 return Result.failure(Exception("Device ID cannot be empty"))
             }
 
+            if (type.isBlank()) {
+                return Result.failure(Exception("Device Type cannot be empty"))
+            }
+
+            if (model.isBlank()) {
+                return Result.failure(Exception("Device Model cannot be empty"))
+            }
+
             val request = RegisterDeviceRequest(
                 deviceId = deviceId,
-                type = "smart_lock",
-                model = "ESP32_v1"
+                type = type,
+                model = model
             )
 
             val response = deviceRepository.registerDevice(request)

@@ -37,7 +37,7 @@ class OrganizationDataSource @Inject constructor(
         val token = authManager.getToken()
             ?: throw Exception("Authentication required")
 
-        return httpClient.get("$baseUrl/organization/all") {
+        return httpClient.get("$baseUrl/organization") {
             bearerAuth(token)
         }.body()
     }
